@@ -902,6 +902,7 @@ class _PlayerHostState extends State<PlayerHost> {
       // PlayerHost is mounted in the app overlay before media exists, so its
       // autofocus has already run. Claim remote focus whenever a new item opens
       // instead of leaving D-pad events on the page behind the video.
+      unawaited(_enterFullscreen());
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && pc.hasMedia && !pc.minimized) _focus.requestFocus();
       });
@@ -992,11 +993,10 @@ class _PlayerHostState extends State<PlayerHost> {
 
   bool _handleSystemBack() {
     if (!pc.hasMedia || pc.minimized) return false;
-    switch (playerBackActionFor(panelOpen: _panelKind != null)) {
-      case PlayerBackAction.closePanel:
-        _closePanel();
-      case PlayerBackAction.minimize:
-        _minimize();
+    if (_panelKind != null) {
+      _closePanel();
+    } else {
+      _close();
     }
     return true;
   }
@@ -1075,6 +1075,21 @@ class _PlayerHostState extends State<PlayerHost> {
     pc.player!.seek(Duration(seconds: target));
     _scheduleHide();
     _flashSeekHud(direction * distance);
+  }
+
+  Future<void> _enterFullscreen() async {
+    if (_isDesktop) {
+      _fullscreen = true;
+      await windowManager.setFullScreen(true);
+    } else {
+      _fullscreen = true;
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
+    if (mounted && pc.hasMedia && !pc.minimized) setState(() {});
   }
 
   Future<void> _toggleFullscreen() async {
