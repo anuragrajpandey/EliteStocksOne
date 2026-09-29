@@ -236,7 +236,7 @@ class _EpgSettingsScreenState extends State<EpgSettingsScreen> {
         ),
         const SizedBox(height: 5),
         Text(
-          'Lumen uses the provider guide automatically. Add a manual XMLTV '
+          'EliteStocks One uses the provider guide automatically. Add a manual XMLTV '
           'source only when your provider supplies a separate guide URL.',
           style: TextStyle(color: muted, height: 1.4, fontSize: 13),
         ),
@@ -282,7 +282,7 @@ class _EpgSettingsScreenState extends State<EpgSettingsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Time correction changes what Lumen displays; cached provider times '
+          'Time correction changes what EliteStocks One displays; cached provider times '
           'remain untouched.',
           style: TextStyle(color: subtle, fontSize: 11.5),
         ),
