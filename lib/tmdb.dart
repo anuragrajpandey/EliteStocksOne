@@ -23,7 +23,7 @@ class Tmdb {
   }) {
     if (_key.trim().isEmpty) return Future.value(const <TmdbTrendingItem>[]);
     return _indiaTvFuture ??= _fetchTrendingTvIndia(
-      candidateLimit.clamp(10, 60),
+      candidateLimit.clamp(10, 60).toInt(),
     );
   }
 
@@ -399,7 +399,7 @@ class TmdbCatalogItem {
       RegExp(r'^(\d{4})').firstMatch(releaseDate)?.group(1) ?? '';
 
   double get score =>
-      popularity + rating * 12 + math.min(voteCount, 5000) / 5000;
+      popularity + rating * 12 + math.min(voteCount, 5000).toDouble() / 5000;
 }
 
 class TmdbInfo {
