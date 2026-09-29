@@ -839,6 +839,33 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
     }
   }
 
+  MediaRef _favoriteRef(_MobileFeature item) {
+    if (item.movie != null) {
+      final movie = item.movie!;
+      return MediaRef(
+        kind: 'movie',
+        id: movie.streamId,
+        name: item.title,
+        image: item.image,
+        cat: movie.categoryId,
+      );
+    }
+    final series = item.series!;
+    return MediaRef(
+      kind: 'series',
+      id: series.seriesId,
+      name: item.title,
+      image: item.image,
+      cat: series.categoryId,
+    );
+  }
+
+  void _toggleFavorite(_MobileFeature item) {
+    final ref = _favoriteRef(item);
+    Library.instance.toggleFav(ref);
+    HapticFeedback.selectionClick();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_items.isEmpty) {
@@ -938,7 +965,7 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
                                 ),
                                 const SizedBox(height: 7),
                                 Text(
-                                  _clean(item.title),
+                                  item.title,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
@@ -948,6 +975,17 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
+                                if (item.tmdbYear.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.tmdbYear,
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 11),
                                 Row(
                                   children: [
@@ -960,7 +998,9 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
                                               : Icons.info_outline_rounded,
                                           size: 20,
                                         ),
-                                        label: Text(item.movie != null ? 'Play' : 'View'),
+                                        label: Text(
+                                          item.movie != null ? 'Play' : 'View',
+                                        ),
                                         style: FilledButton.styleFrom(
                                           minimumSize: const Size.fromHeight(44),
                                           backgroundColor: Colors.white,
@@ -972,21 +1012,51 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    SizedBox(
-                                      width: 48,
-                                      height: 44,
-                                      child: FilledButton(
-                                        onPressed: () => _activate(item),
-                                        style: FilledButton.styleFrom(
-                                          backgroundColor: Colors.white.withValues(alpha: .18),
-                                          foregroundColor: Colors.white,
-                                          padding: EdgeInsets.zero,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(9),
+                                    AnimatedBuilder(
+                                      animation: Library.instance,
+                                      builder: (context, _) {
+                                        final saved = Library.instance.isFav(
+                                          item.key,
+                                        );
+                                        return SizedBox(
+                                          width: 48,
+                                          height: 44,
+                                          child: FilledButton(
+                                            onPressed: () => _toggleFavorite(item),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: Colors.white
+                                                  .withValues(alpha: .18),
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.zero,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(9),
+                                              ),
+                                            ),
+                                            child: AnimatedSwitcher(
+                                              duration: const Duration(
+                                                milliseconds: 180,
+                                              ),
+                                              transitionBuilder:
+                                                  (child, animation) =>
+                                                      ScaleTransition(
+                                                scale: CurvedAnimation(
+                                                  parent: animation,
+                                                  curve: Curves.easeOutBack,
+                                                ),
+                                                child: child,
+                                              ),
+                                              child: Icon(
+                                                saved
+                                                    ? Icons.check_rounded
+                                                    : Icons.add_rounded,
+                                                key: ValueKey(saved),
+                                                size: 24,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        child: const Icon(Icons.add_rounded, size: 24),
-                                      ),
+                                        );
+                                      },
                                     ),
                                   ],
                                 ),
@@ -1057,33 +1127,149 @@ class _MobileFeature {
       : 'series:' + series!.seriesId.toString();
 }
 
-class _MobilePosterShelf extends StatelessWidget {
-  const _MobilePosterShelf({
+class _MobilePosterShelfLoader extends StatelessWidget {
+  const _MobilePosterShelfLoader({
+    super.key,
     required this.title,
-    required this.items,
-    required this.image,
-    required this.titleOf,
+    required this.future,
     required this.onTap,
   });
+
   final String title;
-  final List<VodStream> items;
-  final String Function(VodStream) image;
-  final String Function(VodStream) titleOf;
+  final Future<List<VodStream>>? future;
   final ValueChanged<VodStream> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (future == null) {
+      return _MobileShelfSkeleton(title: title);
+    }
+    return FutureBuilder<List<VodStream>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done && !snap.hasData) {
+          return _MobileShelfSkeleton(title: title);
+        }
+        final items = snap.data ?? const <VodStream>[];
+        if (items.isEmpty) return const SizedBox.shrink();
+        return _MobilePosterShelf(
+          title: title,
+          items: items,
+          onTap: onTap,
+        );
+      },
+    );
+  }
+}
+
+class _MobileSeriesShelfLoader extends StatelessWidget {
+  const _MobileSeriesShelfLoader({
+    super.key,
+    required this.title,
+    required this.future,
+    required this.onTap,
+  });
+
+  final String title;
+  final Future<List<Series>>? future;
+  final ValueChanged<Series> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (future == null) {
+      return _MobileShelfSkeleton(title: title);
+    }
+    return FutureBuilder<List<Series>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done && !snap.hasData) {
+          return _MobileShelfSkeleton(title: title);
+        }
+        final items = snap.data ?? const <Series>[];
+        if (items.isEmpty) return const SizedBox.shrink();
+        return _MobileSeriesShelf(
+          title: title,
+          items: items,
+          onTap: onTap,
+        );
+      },
+    );
+  }
+}
+
+class _MobileShelfSkeleton extends StatelessWidget {
+  const _MobileShelfSkeleton({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 226,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: textHi,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 194,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 4,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (_, _) => Container(
+                  width: 132,
+                  height: 184,
+                  decoration: BoxDecoration(
+                    color: surfaceHi,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobilePosterShelf extends StatelessWidget {
+  const _MobilePosterShelf({
+    required this.title,
+    required this.items,
+    required this.onTap,
+  });
+
+  final String title;
+  final List<VodStream> items;
+  final ValueChanged<VodStream> onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: _MobileShelf(
         title: title,
         children: [
           for (final item in items.take(20))
-            _MobilePosterCard(
+            _MobileTmdbPosterCard(
               key: ValueKey('movie-card-' + item.streamId.toString()),
-              image: image(item),
-              title: titleOf(item),
+              kind: 'movie',
+              rawTitle: item.name,
+              fallbackImage: item.icon,
               onTap: () => onTap(item),
             ),
         ],
@@ -1098,23 +1284,24 @@ class _MobileSeriesShelf extends StatelessWidget {
     required this.items,
     required this.onTap,
   });
+
   final String title;
   final List<Series> items;
   final ValueChanged<Series> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: _MobileShelf(
         title: title,
         children: [
           for (final item in items.take(20))
-            _MobilePosterCard(
+            _MobileTmdbPosterCard(
               key: ValueKey('series-card-' + item.seriesId.toString()),
-              image: item.cover,
-              title: _clean(item.name),
+              kind: 'series',
+              rawTitle: item.name,
+              fallbackImage: item.cover,
               onTap: () => onTap(item),
             ),
         ],
@@ -1130,85 +1317,103 @@ class _MobileShelf extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          child: Text(
-            title,
-            style: TextStyle(
-              color: textHi,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
+    return SizedBox(
+      height: 216,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: textHi,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-        ),
-        SizedBox(
-          height: 194,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: children.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (_, i) => RepaintBoundary(child: children[i]),
+          SizedBox(
+            height: 194,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              cacheExtent: 396,
+              itemCount: children.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => RepaintBoundary(child: children[i]),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _MobilePosterCard extends StatelessWidget {
-  const _MobilePosterCard({
+class _MobileTmdbPosterCard extends StatefulWidget {
+  const _MobileTmdbPosterCard({
     super.key,
-    required this.image,
-    required this.title,
+    required this.kind,
+    required this.rawTitle,
+    required this.fallbackImage,
     required this.onTap,
   });
-  final String image;
-  final String title;
+
+  final String kind;
+  final String rawTitle;
+  final String fallbackImage;
   final VoidCallback onTap;
+
+  @override
+  State<_MobileTmdbPosterCard> createState() => _MobileTmdbPosterCardState();
+}
+
+class _MobileTmdbPosterCardState extends State<_MobileTmdbPosterCard> {
+  late Future<TmdbInfo?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.kind == 'movie'
+        ? Tmdb.movie(widget.rawTitle)
+        : Tmdb.tv(widget.rawTitle);
+  }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 132,
       height: 194,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 132,
-              height: 184,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: MediaImage(
-                  source: image,
-                  fit: BoxFit.cover,
-                  memCacheWidth:
-                      (132 * MediaQuery.devicePixelRatioOf(context))
-                          .round()
-                          .clamp(180, 420),
-                  error: ColoredBox(color: surfaceHi),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: widget.onTap,
+          child: FutureBuilder<TmdbInfo?>(
+            future: _future,
+            builder: (context, snap) {
+              final info = snap.data;
+              final image = info?.poster.isNotEmpty == true
+                  ? info!.poster
+                  : widget.fallbackImage;
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: ClipRRect(
+                  key: ValueKey(image),
+                  borderRadius: BorderRadius.circular(14),
+                  child: MediaImage(
+                    source: image,
+                    fit: BoxFit.cover,
+                    memCacheWidth:
+                        (132 * MediaQuery.devicePixelRatioOf(context))
+                            .round()
+                            .clamp(180, 420),
+                    error: ColoredBox(color: surfaceHi),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: textHi,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1229,50 +1434,33 @@ class _MobileLivePoster extends StatelessWidget {
     return SizedBox(
       width: 132,
       height: 194,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 132,
-              height: 184,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    MediaImage(
-                      source: channel.image,
-                      fit: BoxFit.cover,
-                      memCacheWidth:
-                          (132 * MediaQuery.devicePixelRatioOf(context))
-                              .round()
-                              .clamp(180, 420),
-                      error: ColoredBox(color: surfaceHi),
-                    ),
-                    const Positioned(
-                      top: 8,
-                      left: 8,
-                      child: _LiveBadge(),
-                    ),
-                  ],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MediaImage(
+                  source: channel.image,
+                  fit: BoxFit.cover,
+                  memCacheWidth:
+                      (132 * MediaQuery.devicePixelRatioOf(context))
+                          .round()
+                          .clamp(180, 420),
+                  error: ColoredBox(color: surfaceHi),
                 ),
-              ),
+                const Positioned(
+                  top: 8,
+                  left: 8,
+                  child: _LiveBadge(),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              channel.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: textHi,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
