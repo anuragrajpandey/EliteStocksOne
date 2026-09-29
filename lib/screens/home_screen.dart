@@ -731,7 +731,6 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
   Timer? _timer;
   List<_MobileFeature> _items = const [];
   int _index = 0;
-  bool _dragging = false;
 
   @override
   void initState() {
@@ -768,7 +767,7 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
     _timer?.cancel();
     if (_items.length < 2) return;
     _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || _dragging || !_pageController.hasClients) return;
+      if (!mounted || !_pageController.hasClients) return;
       final next = (_index + 1) % _items.length;
       _pageController.animateToPage(
         next,
@@ -825,14 +824,6 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
                   return RepaintBoundary(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onHorizontalDragStart: (_) {
-                        _dragging = true;
-                        _timer?.cancel();
-                      },
-                      onHorizontalDragEnd: (_) {
-                        _dragging = false;
-                        _startTimer();
-                      },
                       onTap: () => _activate(item),
                       child: Stack(
                         fit: StackFit.expand,
