@@ -37,7 +37,7 @@ class Palette {
   });
 }
 
-const defaultAccent = Color(0xFFC7F36B); // signal lime
+const defaultAccent = Color(0xFFFFB84D); // solar gold
 
 // Shared geometry and motion keep the interface feeling designed as one
 // system. TV focus transitions stay short enough to remain responsive.
@@ -578,17 +578,16 @@ class ThemeController {
 
   final ValueNotifier<ThemeMode> mode = ValueNotifier(ThemeMode.dark);
   final ValueNotifier<Color> accent = ValueNotifier(defaultAccent);
-  final ValueNotifier<LumenFont> font = ValueNotifier(LumenFont.lumen);
+  final ValueNotifier<LumenFont> font = ValueNotifier(LumenFont.inter);
   final ValueNotifier<LumenCornerStyle> corners = ValueNotifier(
-    LumenCornerStyle.balanced,
+    LumenCornerStyle.crisp,
   );
   final ValueNotifier<LumenFocusStyle> focus = ValueNotifier(
     LumenFocusStyle.lift,
   );
 
   /// Rebuild signal for appearance changes.
-  Listenable get listenable =>
-      Listenable.merge([mode, accent, font, corners, focus]);
+  Listenable get listenable => mode;
 
   Future<void> load() async {
     final p = await SharedPreferences.getInstance();
@@ -600,31 +599,14 @@ class ThemeController {
       case 'dark':
         mode.value = ThemeMode.dark;
     }
-    final c = p.getInt(_accentKey);
-    if (c != null) accent.value = Color(c);
-    final savedFont = p.getString(_fontKey);
-    if (savedFont != null) {
-      font.value = LumenFont.values.firstWhere(
-        (option) => option.name == savedFont,
-        orElse: () => LumenFont.lumen,
-      );
-    }
-    final savedCorners = p.getString(_cornersKey);
-    if (savedCorners != null) {
-      corners.value = LumenCornerStyle.values.firstWhere(
-        (option) => option.name == savedCorners,
-        orElse: () => LumenCornerStyle.balanced,
-      );
-    }
-    final savedFocus = p.getString(_focusKey);
-    if (savedFocus != null) {
-      focus.value = LumenFocusStyle.values.firstWhere(
-        (option) => option.name == savedFocus,
-        orElse: () => LumenFocusStyle.lift,
-      );
-    }
-  }
 
+    // Appearance customization is fixed for EliteStocks One. Only the
+    // light/dark/system mode remains user-selectable.
+    accent.value = const Color(0xFFFFB84D);
+    font.value = LumenFont.inter;
+    corners.value = LumenCornerStyle.crisp;
+    focus.value = LumenFocusStyle.lift;
+  }
   Future<void> set(ThemeMode m) async {
     mode.value = m;
     final p = await SharedPreferences.getInstance();
