@@ -198,7 +198,7 @@ class _LaunchSplashState extends State<LaunchSplash>
                                   fit: BoxFit.contain,
                                   filterQuality: FilterQuality.high,
                                   semanticLabel: 'EliteStocks TV',
-                                ),),
+                                ),
                               ),
                             ),
                             SizedBox(height: compact ? 18 : 24),
