@@ -1093,20 +1093,13 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   Future<void> _toggleFullscreen() async {
-    _fullscreen = !_fullscreen;
-    if (_isDesktop) {
-      await windowManager.setFullScreen(_fullscreen);
-    } else if (_fullscreen) {
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    } else {
-      await SystemChrome.setPreferredOrientations([]);
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Mobile playback opens directly in fullscreen landscape. The exit-fullscreen
+    // control is the explicit way out of the playback surface.
+    if (_fullscreen) {
+      _close();
+      return;
     }
-    if (mounted) setState(() {});
+    await _enterFullscreen();
   }
 
   void _toggleMute() {
