@@ -626,14 +626,12 @@ class _HomeScreenState extends State<HomeScreen>
     };
     _mobileHeroFuture = _mobileHeroItems(
       client,
-      movieCategories,
       seriesCategories,
     );
   }
 
   Future<List<_MobileFeature>> _mobileHeroItems(
     XtreamClient client,
-    List<Category> movieCategories,
     List<Category> seriesCategories,
   ) async {
     try {
@@ -677,6 +675,20 @@ class _HomeScreenState extends State<HomeScreen>
 
   String _titleKey(String raw) {
     var value = raw.toLowerCase();
+    value = value.replaceAll(
+      RegExp(r'\b(?:19|20)\d{2}\b'),
+      ' ',
+    );
+    value = value.replaceAll(
+      RegExp(r'\b(?:season|s)\s*\d{1,2}\b'),
+      ' ',
+    );
+    value = value.replaceAll(
+      RegExp(
+        r'\b(?:4k|uhd|fhd|hd|sd|1080p|720p|2160p|hevc|x265|x264)\b',
+      ),
+      ' ',
+    );
     value = value.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
     value = value.replaceAll(RegExp(r'\b(?:the|a|an)\b'), ' ');
     value = value.replaceAll(RegExp(r'\s+'), ' ').trim();
