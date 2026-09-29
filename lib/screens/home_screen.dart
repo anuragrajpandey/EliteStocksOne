@@ -721,7 +721,7 @@ class _HomeScreenState extends State<HomeScreen>
           final bDate = b.movie?.added ?? b.series?.releaseDate ?? '';
           return mediaAddedValue(bDate).compareTo(mediaAddedValue(aDate));
         });
-        return all.where((item) => item.image.isNotEmpty).take(20).toList();
+        return _enrichMissingTmdbArtwork(all.take(20).toList());
       }
 
       if (title == 'Editor\'s Picks') {
@@ -807,6 +807,49 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {
       return const <_MobileFeature>[];
     }
+  }
+
+  Future<List<_MobileFeature>> _enrichMissingTmdbArtwork(
+    List<_MobileFeature> items,
+  ) async {
+    if (items.isEmpty) return const <_MobileFeature>[];
+    final enriched = await Future.wait(
+      items.map((item) async {
+        if (item.image.isNotEmpty) return item;
+        try {
+          final movie = item.movie;
+          if (movie != null) {
+            final info = await Tmdb.movie(movie.name);
+            if (info != null && info.poster.isNotEmpty) {
+              return _MobileFeature.movie(
+                movie,
+                tmdbTitle: info.title,
+                tmdbImage: info.poster,
+                tmdbYear: info.year,
+              );
+            }
+          }
+          final series = item.series;
+          if (series != null) {
+            final info = await Tmdb.tv(series.name);
+            if (info != null && info.poster.isNotEmpty) {
+              return _MobileFeature.series(
+                series,
+                tmdbTitle: info.title,
+                tmdbImage: info.poster,
+                tmdbYear: info.year,
+              );
+            }
+          }
+        } catch (_) {
+          // Artwork enrichment is optional. Keep the playable provider row.
+        }
+        return item;
+      }),
+    );
+    return enriched.where((item) => item.image.isNotEmpty).take(20).toList(
+      growable: false,
+    );
   }
 
   String _titleKey(String raw) {
