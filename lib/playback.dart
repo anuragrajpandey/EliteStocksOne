@@ -721,14 +721,24 @@ class PlaybackController extends ChangeNotifier {
     List<PlayerItem> newItems,
     int safeIndex,
   ) async {
-    final selected = newItems[safeIndex];
+    // Never marshal an entire provider/search result into the native TV
+    // player. A catalog can contain hundreds of thousands of entries, and
+    // building that platform-channel payload can exhaust RAM or stall the UI.
+    const radius = 100;
+    final start = (safeIndex - radius).clamp(0, newItems.length).toInt();
+    final end = (safeIndex + radius + 1)
+        .clamp(start, newItems.length)
+        .toInt();
+    final window = newItems.sublist(start, end);
+    final windowIndex = safeIndex - start;
+    final selected = window[windowIndex];
     final selectedSources = playbackSourceCandidates(selected);
     final opened = await AndroidCompatibilityPlayer.open(
       url: selectedSources.first,
       title: selected.title,
       isLive: selected.isLive,
       playlist: [
-        for (final item in newItems)
+        for (final item in window)
           () {
             final sources = playbackSourceCandidates(item);
             final saved = item.progressKey == null
@@ -746,7 +756,7 @@ class PlaybackController extends ChangeNotifier {
             );
           }(),
       ],
-      initialIndex: safeIndex,
+      initialIndex: windowIndex,
       headers: {
         'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
         'Accept': '*/*',
@@ -1304,8 +1314,13 @@ class PlaybackController extends ChangeNotifier {
     _networkRecoveryTimer?.cancel();
     _networkRecoveryTimer = null;
     _cancelReconnect();
+
+    // If the native player is still opening a new source, do not issue a
+    // concurrent pause command. The open operation will see _wantsPlayback
+    // before returning and pause the newly opened media safely. This removes
+    // the pause -> retry race that can crash some Android/media_kit builds.
     final active = player;
-    if (active != null) {
+    if (active != null && _openInFlight == null && _startedCurrent) {
       unawaited(
         active.pause().catchError((error) {
           _setFailure(classifyPlaybackFailure('$error'));
@@ -1435,9 +1450,30 @@ class PlaybackController extends ChangeNotifier {
     playbackError = null;
     _openToken++;
     _nativeSetup = null;
-    player?.dispose();
+
+    // Detach the controller immediately, but defer native disposal until an
+    // in-flight open has observed the invalidated token. Disposing libmpv
+    // concurrently with Player.open() is a native race and can terminate the
+    // process instead of producing a recoverable Dart exception.
+    final activePlayer = player;
+    final opening = _openInFlight;
     player = null;
     controller = null;
+    if (activePlayer != null) {
+      if (opening != null) {
+        unawaited(
+          opening.whenComplete(() {
+            try {
+              activePlayer.dispose();
+            } catch (_) {}
+          }),
+        );
+      } else {
+        try {
+          activePlayer.dispose();
+        } catch (_) {}
+      }
+    }
     items = [];
     _sourceCandidates = const [];
     _sourceIndex = 0;
