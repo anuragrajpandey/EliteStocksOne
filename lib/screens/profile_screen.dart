@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../device_profile.dart';
 import '../downloads.dart';
 import '../library.dart';
@@ -505,30 +504,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _openCommunity() async {
-    final opened = await launchUrl(
-      Uri.parse(communityUrl),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Could not open the Lumen community link.'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-    }
-  }
-
   Future<void> _requestLogout() async {
     if (_signingOut) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: surface,
-        title: const Text('Sign out of Lumen?'),
+        title: const Text('Sign out of EliteStocks One?'),
         content: const Text(
           'This account stays saved on this device, but playback and its '
           'library will close now.',
@@ -563,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ..showSnackBar(
           const SnackBar(
             content: Text(
-              'Lumen could not finish signing out. Please try again.',
+              'EliteStocks One could not finish signing out. Please try again.',
             ),
             duration: Duration(seconds: 3),
           ),
@@ -585,7 +567,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              content: Text('Could not open Lumen in Google Play.'),
+              content: Text('Could not open EliteStocks One in Google Play.'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -1254,79 +1236,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
   );
 
   Widget _privacyCard() => _profileSection(
-    eyebrow: 'LUMEN',
+    eyebrow: 'APP',
     icon: Icons.shield_outlined,
     title: 'App & support',
-    subtitle: 'Get help, review policies, and keep Lumen current.',
+    subtitle: 'Review policies and manage the app.',
     body: [
       _actionRow(
         focusNode: _diagnosticsFocus,
-        onKeyEvent: (_, event) =>
-            _moveVertically(event, up: _historyFocus, down: _communityFocus),
+        onKeyEvent: (_, event) => _moveVertically(event, up: _historyFocus, down: _legalFocus),
         icon: Icons.bug_report_outlined,
         title: 'Diagnostics & feedback',
         subtitle: 'Review a private, redacted support report',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => DiagnosticsScreen(credentials: widget.client.creds),
-          ),
-        ),
-      ),
-      _divider(),
-      _actionRow(
-        focusNode: _communityFocus,
-        onKeyEvent: (_, event) =>
-            _moveVertically(event, up: _diagnosticsFocus, down: _legalFocus),
-        icon: Icons.forum_outlined,
-        title: 'Join the Lumen community',
-        subtitle: 'Chat with other users and share feedback on Discord',
-        onTap: _openCommunity,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DiagnosticsScreen(credentials: widget.client.creds))),
       ),
       _divider(),
       _actionRow(
         focusNode: _legalFocus,
-        onKeyEvent: (_, event) => _moveVertically(
-          event,
-          up: _communityFocus,
-          down: Updater.instance.isEnabled ? _updateFocus : _signOutFocus,
-        ),
+        onKeyEvent: (_, event) => _moveVertically(event, up: _diagnosticsFocus, down: Updater.instance.isEnabled ? _updateFocus : _signOutFocus),
         icon: Icons.privacy_tip_outlined,
         title: 'Legal & privacy',
-        subtitle: privacyPolicyUrl.contains('github.io')
-            ? 'Privacy policy and terms'
-            : 'App policies and details',
-        onTap: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const LegalScreen())),
+        subtitle: 'App policies and details',
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LegalScreen())),
       ),
       if (Updater.instance.isEnabled) ...[
         _divider(),
         _actionRow(
           focusNode: _updateFocus,
-          onKeyEvent: (_, event) =>
-              _moveVertically(event, up: _legalFocus, down: _signOutFocus),
+          onKeyEvent: (_, event) => _moveVertically(event, up: _legalFocus, down: _signOutFocus),
           icon: Icons.system_update_rounded,
           title: 'App version & updates',
-          subtitle: _checkingUpdate
-              ? 'Checking…'
-              : '${Updater.instance.currentLabel} · '
-                    '${Updater.instance.distributionLabel}',
+          subtitle: _checkingUpdate ? 'Checking…' : '\${Updater.instance.currentLabel} · \${Updater.instance.distributionLabel}',
           onTap: _checkingUpdate ? null : _checkForUpdates,
-          trailing: _checkingUpdate
-              ? SizedBox(
-                  width: 17,
-                  height: 17,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: accentInk,
-                  ),
-                )
-              : null,
+          trailing: _checkingUpdate ? SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: accentInk)) : null,
         ),
       ],
     ],
   );
-
   Widget _profileSection({
     required String eyebrow,
     required IconData icon,
@@ -1490,7 +1435,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       up: Updater.instance.isEnabled ? _updateFocus : _legalFocus,
     ),
     onTap: _signingOut ? null : _requestLogout,
-    semanticLabel: 'Sign out of Lumen',
+    semanticLabel: 'Sign out of EliteStocks One',
     focusRadius: 18,
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
@@ -1517,7 +1462,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(width: 11),
           Expanded(
             child: Text(
-              _signingOut ? 'Signing out…' : 'Sign out of Lumen',
+              _signingOut ? 'Signing out…' : 'Sign out of EliteStocks One',
               style: TextStyle(color: dangerInk, fontWeight: FontWeight.w800),
             ),
           ),
