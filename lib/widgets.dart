@@ -2064,58 +2064,52 @@ class PillButton extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final fg = filled ? onAccent : textHi;
     return FocusableTap(
       focusNode: focusNode,
       onKeyEvent: onKeyEvent,
       onTap: onTap,
       builder: (context, active) => AnimatedScale(
-        // FocusableTap owns the app-wide, user-selected scale treatment.
-        scale: 1,
+        scale: active ? 1.02 : 1,
         duration: lumenMotionFast,
         curve: Curves.easeOut,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
           decoration: BoxDecoration(
+            // Netflix-style controls stay neutral regardless of the selected
+            // app accent. Artwork and branding provide the colour instead.
             color: filled
-                ? accent
-                : (active ? surfaceRaised : surfaceHi.withValues(alpha: 0.82)),
+                ? Colors.white
+                : (active
+                      ? Colors.white.withValues(alpha: .18)
+                      : Colors.black.withValues(alpha: .58)),
             borderRadius: BorderRadius.circular(lumenCorner(lumenRadiusMd)),
-            border: filled
-                ? Border.all(
-                    color: active
-                        ? foregroundFor(accent).withValues(alpha: .32)
-                        : accent,
-                  )
-                : Border.all(
-                    color: active ? accentInk : lineStrong,
-                    width: active ? activeFocusStyle.ringWidth : 1,
-                  ),
-            boxShadow: filled
-                ? [
-                    BoxShadow(
-                      color: accent.withValues(
-                        alpha: active
-                            ? (isDark ? .32 : .22)
-                            : (isDark ? .18 : .12),
-                      ),
-                      blurRadius: active ? 28 : 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
+            border: Border.all(
+              color: active ? Colors.white : Colors.white24,
+              width: active ? 1.5 : 1,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 18,
+                offset: Offset(0, 7),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, color: fg, size: 20),
+                Icon(
+                  icon,
+                  color: filled ? Colors.black : Colors.white,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
               ],
               Text(
                 label,
                 style: TextStyle(
-                  color: fg,
+                  color: filled ? Colors.black : Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 14.5,
                   letterSpacing: -0.2,
