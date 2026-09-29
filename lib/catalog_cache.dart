@@ -519,6 +519,86 @@ class CatalogCache {
     );
   }
 
+  Future<CatalogPage<Series>> _searchSeriesCategories(
+    XtreamClient client, {
+    required String query,
+    required int offset,
+    required int limit,
+    required String sort,
+  }) async {
+    final categories = await series(client, priority: true);
+    final normalized = query.trim().toLowerCase();
+    final candidates = categories.take(24).toList(growable: false);
+    final results = await Future.wait(
+      candidates.map(
+        (category) => seriesItems(client, category.id, priority: true)
+            .timeout(const Duration(seconds: 4), onTimeout: () => <Series>[])
+            .catchError((_) => <Series>[]),
+      ),
+    );
+    final matches = <int, Series>{};
+    for (final items in results) {
+      for (final item in items) {
+        if (item.name.toLowerCase().contains(normalized)) {
+          matches[item.seriesId] = item;
+        }
+      }
+    }
+    return _memoryPage(
+      matches.values.toList(growable: false),
+      offset: offset,
+      limit: limit,
+      query: query,
+      sort: sort,
+      name: (item) => item.name,
+      rating: (item) => item.rating,
+      recent: (item) => _yearValue(
+        item.releaseDate.isEmpty ? item.name : item.releaseDate,
+      ),
+      year: (item) => _yearValue(
+        item.releaseDate.isEmpty ? item.name : item.releaseDate,
+      ),
+    );
+  }
+
+  Future<CatalogPage<LiveStream>> _searchLiveCategories(
+    XtreamClient client, {
+    required String query,
+    required int offset,
+    required int limit,
+    required String sort,
+  }) async {
+    final categories = await liveCategories(client, priority: true);
+    final normalized = query.trim().toLowerCase();
+    final candidates = categories.take(24).toList(growable: false);
+    final results = await Future.wait(
+      candidates.map(
+        (category) => liveStreams(client, category.id, priority: true)
+            .timeout(const Duration(seconds: 4), onTimeout: () => <LiveStream>[])
+            .catchError((_) => <LiveStream>[]),
+      ),
+    );
+    final matches = <int, LiveStream>{};
+    for (final items in results) {
+      for (final item in items) {
+        if (item.name.toLowerCase().contains(normalized)) {
+          matches[item.streamId] = item;
+        }
+      }
+    }
+    return _memoryPage(
+      matches.values.toList(growable: false),
+      offset: offset,
+      limit: limit,
+      query: query,
+      sort: sort,
+      name: (item) => item.name,
+      rating: (_) => 0,
+      recent: (_) => 0,
+      year: (_) => 0,
+    );
+  }
+
   Future<CatalogPage<Series>> seriesPage(
     XtreamClient client, {
     String? categoryId,
@@ -562,6 +642,18 @@ class CatalogCache {
         exactLocal ||
         (categoryId == null &&
             await CatalogStore.instance.hasItems(scope, 'series'));
+    if (categoryId == null &&
+        query.trim().isNotEmpty &&
+        !exactLocal &&
+        cached.items.isEmpty) {
+      return _searchSeriesCategories(
+        client,
+        query: query,
+        offset: offset,
+        limit: limit,
+        sort: sort,
+      );
+    }
     if (cached.items.isNotEmpty || anyLocal) {
       if (categoryId == null && !exactLocal) {
         unawaited(_importAllSeries(client, scope));
@@ -643,6 +735,18 @@ class CatalogCache {
         exactLocal ||
         (categoryId == null &&
             await CatalogStore.instance.hasItems(scope, 'live'));
+    if (categoryId == null &&
+        query.trim().isNotEmpty &&
+        !exactLocal &&
+        cached.items.isEmpty) {
+      return _searchLiveCategories(
+        client,
+        query: query,
+        offset: offset,
+        limit: limit,
+        sort: sort,
+      );
+    }
     if (cached.items.isNotEmpty || anyLocal) {
       if (categoryId == null && !exactLocal) {
         unawaited(_importAllLive(client, scope));
