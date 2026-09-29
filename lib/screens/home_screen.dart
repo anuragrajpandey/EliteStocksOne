@@ -1638,53 +1638,6 @@ class _MobileFeaturePosterCard extends StatelessWidget {
   }
 }
 
-class _MobileLivePoster extends StatelessWidget {
-  const _MobileLivePoster({
-    super.key,
-    required this.channel,
-    required this.onTap,
-  });
-  final MediaRef channel;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 132,
-      height: 194,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                MediaImage(
-                  source: channel.image,
-                  fit: BoxFit.cover,
-                  memCacheWidth:
-                      (132 * MediaQuery.devicePixelRatioOf(context))
-                          .round()
-                          .clamp(180, 420),
-                  error: ColoredBox(color: surfaceHi),
-                ),
-                const Positioned(
-                  top: 8,
-                  left: 8,
-                  child: _LiveBadge(),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _LiveBadge extends StatelessWidget {
   const _LiveBadge();
 
