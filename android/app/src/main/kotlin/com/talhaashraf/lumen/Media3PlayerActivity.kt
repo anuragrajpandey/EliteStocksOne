@@ -1653,7 +1653,7 @@ class Media3PlayerActivity : Activity() {
             ClipDrawable.HORIZONTAL
         )
         val playedTrack = ClipDrawable(
-            roundedRect(accentColor, Color.TRANSPARENT, 0, 2),
+            roundedRect(Color.WHITE, Color.TRANSPARENT, 0, 2),
             Gravity.START,
             ClipDrawable.HORIZONTAL
         )
@@ -1670,7 +1670,7 @@ class Media3PlayerActivity : Activity() {
 
     private fun seekThumb(focused: Boolean): GradientDrawable = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
-        setColor(accentColor)
+        setColor(Color.WHITE)
         setStroke(
             dp(if (focused) 2 else 1),
             if (focused) Color.WHITE else 0xCC0B0D0B.toInt()
@@ -1695,21 +1695,17 @@ class Media3PlayerActivity : Activity() {
         )
         addState(
             intArrayOf(android.R.attr.state_focused),
-            shape(
-                accentColor,
-                Color.WHITE,
-                1
-            )
+            shape(Color.WHITE, Color.WHITE, 1)
         )
         addState(
             intArrayOf(android.R.attr.state_pressed),
-            shape(withAlpha(accentColor, 0xE6), Color.WHITE, 1)
+            shape(0xFFE6E6E6.toInt(), Color.WHITE, 1)
         )
         addState(
             intArrayOf(),
             shape(
-                0xD9111511.toInt(),
-                if (prominent) withAlpha(accentColor, 0x99) else 0x99596157.toInt(),
+                if (prominent) Color.WHITE else 0xD9111511.toInt(),
+                if (prominent) Color.WHITE else 0x99596157.toInt(),
                 1
             )
         )
