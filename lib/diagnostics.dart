@@ -78,7 +78,7 @@ class AppDiagnostics {
     }
 
     final lines = <String>[
-      'LUMEN DIAGNOSTIC REPORT',
+      'ELITESTOCKS ONE DIAGNOSTIC REPORT',
       'Generated: ${now.toIso8601String()}',
       '',
       'PRIVACY',
@@ -173,8 +173,8 @@ class AppDiagnostics {
       SharePlus.instance.share(
         ShareParams(
           text: report,
-          subject: 'Lumen diagnostic report',
-          title: 'Lumen diagnostic report',
+          subject: 'EliteStocks One diagnostic report',
+          title: 'EliteStocks One diagnostic report',
           sharePositionOrigin: sharePositionOrigin,
         ),
       );
