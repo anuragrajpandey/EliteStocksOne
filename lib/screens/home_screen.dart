@@ -162,7 +162,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<_HomeData> _loadHome() async {
     final categoryLoader = widget.categoryLoader;
-    if (categoryLoader != null) return _HomeData(await categoryLoader());
+    if (categoryLoader != null) {
+      return _HomeData(await categoryLoader(), const <Category>[]);
+    }
     // Plain M3U profiles are live-only. Do not spend multiple retry windows on
     // movie/series endpoints they can never have before showing their channels.
     if (!widget.client.supportsMovieCatalog &&
@@ -564,6 +566,36 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  Widget _mobileContinueWatching() {
+    final items = Library.instance.continueWatching();
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: _MobileShelf(
+        title: 'Continue Watching',
+        children: [
+          for (final progress in items)
+            _MobileContinuePoster(
+              key: ValueKey('continue-' + progress.key),
+              progress: progress,
+              onTap: () {
+                if (progress.url.trim().isEmpty) return;
+                PlaybackController.instance.open([
+                  PlayerItem(
+                    progress.url,
+                    progress.title,
+                    progressKey: progress.key,
+                    poster: progress.poster,
+                    ext: progress.ext,
+                  ),
+                ], 0);
+              },
+            ),
+        ],
+      ),
+    );
+  }
   Widget _searchBar() {
     return Padding(
       // The shell owns the persistent account control in the top-right corner.
