@@ -30,7 +30,7 @@ HomeBackAction homeBackActionFor(int page) =>
 
 const catalogResumeRefreshGrace = Duration(seconds: 2);
 
-/// Ignore lifecycle flicker from system overlays, but refresh after Lumen has
+/// Ignore lifecycle flicker from system overlays, but refresh after EliteStocks One has
 /// genuinely been left and reopened. A cold process launch already performs a
 /// cached-first provider revalidation through [CatalogCache].
 bool shouldRefreshCatalogAfterResume(
@@ -44,7 +44,7 @@ Future<bool> showHomeExitConfirmation(BuildContext context) async =>
     await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Exit Lumen?'),
+        title: const Text('Exit EliteStocks One?'),
         content: const Text('Do you want to close the app?'),
         actions: [
           TextButton(
@@ -977,7 +977,7 @@ class _MobileUtilityHub extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Your Lumen',
+                        'Your EliteStocks One',
                         style: kTitle().copyWith(fontSize: 20),
                       ),
                       const SizedBox(height: 2),
@@ -1238,7 +1238,7 @@ class _SignalDock extends StatelessWidget {
               children: [
                 const SizedBox(height: 6),
                 Tooltip(
-                  message: 'Lumen',
+                  message: 'EliteStocks One',
                   child: Container(
                     width: 46,
                     height: 46,
@@ -1511,7 +1511,7 @@ class _CommandBar extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              _titles[index] ?? 'Lumen',
+              _titles[index] ?? 'EliteStocks One',
               style: kTitle().copyWith(fontSize: 25),
             ),
             const SizedBox(width: 12),
