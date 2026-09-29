@@ -13,7 +13,7 @@ plugins {
 // Signing should own the distribution key; this is only the upload key.
 // Local Community releases use a separate private key without replacing the
 // Play upload configuration at android/key.properties.
-val keystorePropertiesFile = providers.gradleProperty("eliteStocksOneSigningPropertiesFile").orNull
+val keystorePropertiesFile = providers.gradleProperty("lumenSigningPropertiesFile").orNull
     ?.let(::File) ?: rootProject.file("key.properties")
 val hasKeystore = keystorePropertiesFile.exists()
 val keystoreProperties = Properties()
@@ -21,7 +21,7 @@ if (hasKeystore) keystoreProperties.load(FileInputStream(keystorePropertiesFile)
 val requiresReleaseSigning = gradle.startParameter.taskNames.any {
     it.contains("release", ignoreCase = true)
 }
-val isCommunityBuild = providers.gradleProperty("eliteStocksOneCommunityBuild")
+val isCommunityBuild = providers.gradleProperty("lumenCommunityBuild")
     .orNull
     ?.toBooleanStrictOrNull() == true
 if (requiresReleaseSigning && !hasKeystore) {
@@ -31,7 +31,7 @@ if (requiresReleaseSigning && !hasKeystore) {
 }
 
 android {
-    namespace = "com.anuragrajpandey.elitestocksone"
+    namespace = "com.talhaashraf.lumen"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -46,9 +46,9 @@ android {
 
     defaultConfig {
         applicationId = if (isCommunityBuild) {
-            "com.anuragrajpandey.elitestocksone.community"
+            "com.talhaashraf.lumen.community"
         } else {
-            "com.anuragrajpandey.elitestocksone"
+            "com.talhaashraf.lumen"
         }
         resValue(
             "string",
