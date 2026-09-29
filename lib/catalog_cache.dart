@@ -494,6 +494,9 @@ class CatalogCache {
             client,
             category.id,
             priority: true,
+          ).timeout(
+            const Duration(milliseconds: 2200),
+            onTimeout: () => <VodStream>[],
           ).catchError((_) => <VodStream>[]),
         ),
       );
