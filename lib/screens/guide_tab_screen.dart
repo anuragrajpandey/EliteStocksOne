@@ -174,7 +174,7 @@ class _GuideTabScreenState extends State<GuideTabScreen>
       if (!mounted || generation != _generation) return;
       setState(() {
         _loadingCategories = false;
-        _error = 'Lumen could not load the live-TV categories.';
+        _error = 'EliteStocks One could not load the live-TV categories.';
       });
     }
   }
@@ -215,7 +215,7 @@ class _GuideTabScreenState extends State<GuideTabScreen>
       if (!mounted || requestGeneration != _generation) return;
       setState(() {
         _loadingChannels = false;
-        _error = 'Lumen could not load channels for this category.';
+        _error = 'EliteStocks One could not load channels for this category.';
       });
     }
   }
