@@ -210,7 +210,7 @@ class _LaunchSplashState extends State<LaunchSplash>
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     Text(
-                                      'LUMEN',
+                                      'EliteStocks One',
                                       style: TextStyle(
                                         color: const Color(0xFFF4F1E8),
                                         fontFamily: 'SpaceGrotesk',
