@@ -435,6 +435,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final cardWidth = DeviceProfile.isTelevision ? 310.0 : 260.0;
     final cardHeight = DeviceProfile.isTelevision ? 112.0 : 96.0;
+    final channelWidth = math.min(
+      650.0,
+      math.max(280.0, MediaQuery.sizeOf(context).width - 40),
+    );
+    final channelHeight = channelWidth * (240.0 / 650.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -477,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: SectionHeader(title: 'Recent channels'),
           ),
           SizedBox(
-            height: cardHeight + 16,
+            height: channelHeight + 16,
             child: HorizontalShelfViewport(
               key: const ValueKey('home-recent-channels-viewport'),
               child: ListView.separated(
@@ -494,8 +499,8 @@ class _HomeScreenState extends State<HomeScreen>
                   key: ValueKey(channels[i].key),
                   item: channels[i],
                   index: i,
-                  width: cardWidth,
-                  height: cardHeight,
+                  width: channelWidth,
+                  height: channelHeight,
                   focusNode: _channelNode(channels[i].key),
                   onTap: () => _openRecentChannel(channels[i]),
                   onLongPress: () => _showChannelActions(channels[i]),
@@ -2775,9 +2780,9 @@ class _RecentChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const cardWidth = 650.0;
-    const cardHeight = 240.0;
-    const artworkWidth = 255.0;
+    final cardWidth = width;
+    final cardHeight = height;
+    final artworkWidth = cardHeight * (255.0 / 240.0);
 
     return SizedBox(
       width: cardWidth,
