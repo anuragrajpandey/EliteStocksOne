@@ -158,21 +158,6 @@ class _LaunchSplashState extends State<LaunchSplash>
                                   child: Stack(
                                     alignment: Alignment.center,
                                     children: [
-                                      Lottie.asset(
-                                        'assets/lumen_loader.json',
-                                        width: compact ? 184 : 240,
-                                        height: compact ? 184 : 240,
-                                        repeat: !reducedMotion,
-                                        animate: !reducedMotion,
-                                        fit: BoxFit.contain,
-                                        delegates: LottieDelegates(
-                                          values: [
-                                            ValueDelegate.color(const [
-                                              '**',
-                                            ], value: defaultAccent),
-                                          ],
-                                        ),
-                                      ),
                                       Container(
                                         width: markSize,
                                         height: markSize,
@@ -183,19 +168,20 @@ class _LaunchSplashState extends State<LaunchSplash>
                                             lumenCorner(markSize * .28),
                                           ),
                                           border: Border.all(
-                                            color: defaultAccent.withValues(
-                                              alpha: .7,
-                                            ),
+                                            color: defaultAccent.withValues(alpha: .7),
                                             width: 1.5,
                                           ),
                                         ),
-                                        child: LumenMark(
-                                          size: markSize * .68,
-                                          signal: defaultAccent,
-                                          frame: const Color(0xFFF4F1E8),
+                                        child: Image.asset(
+                                          'assets/EliteStocksTVicon.png',
+                                          width: markSize * .68,
+                                          height: markSize * .68,
+                                          fit: BoxFit.contain,
+                                          filterQuality: FilterQuality.high,
+                                          semanticLabel: 'EliteStocks TV icon',
                                         ),
                                       ),
-                                    ],
+                                    ]
                                   ),
                                 ),
                               ),
@@ -205,46 +191,14 @@ class _LaunchSplashState extends State<LaunchSplash>
                               offset: Offset(0, 16 * (1 - nameIn)),
                               child: Opacity(
                                 opacity: nameIn.clamp(0, 1),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'EliteStocks One',
-                                      style: TextStyle(
-                                        color: const Color(0xFFF4F1E8),
-                                        fontFamily: 'SpaceGrotesk',
-                                        fontSize: brandSize,
-                                        fontWeight: FontWeight.w600,
-                                        height: .9,
-                                        letterSpacing: -2.4,
-                                      ),
-                                    ),
-                                    SizedBox(width: brandSize * .16),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: brandSize * .15,
-                                        vertical: brandSize * .08,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: defaultAccent,
-                                        borderRadius: BorderRadius.circular(
-                                          lumenCorner(brandSize * .15),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'TV',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontFamily: 'SpaceGrotesk',
-                                          fontSize: brandSize * .28,
-                                          fontWeight: FontWeight.w800,
-                                          height: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                child: Image.asset(
+                                  'assets/EliteStocksTV.png',
+                                  width: compact ? 190 : 240,
+                                  height: compact ? 58 : 72,
+                                  fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.high,
+                                  semanticLabel: 'EliteStocks TV',
+                                ),),
                               ),
                             ),
                             SizedBox(height: compact ? 18 : 24),
