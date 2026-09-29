@@ -529,23 +529,30 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
-    final categories = await series(client, priority: true);
     final normalized = query.trim().toLowerCase();
     final candidates = categories.take(12).toList(growable: false);
-    final results = await Future.wait(
-      candidates.map(
-        (category) => seriesItems(client, category.id, priority: true)
-            .timeout(const Duration(milliseconds: 2200), onTimeout: () => <Series>[])
-            .catchError((_) => <Series>[]),
-      ),
-    );
     final matches = <int, Series>{};
-    for (final items in results) {
-      for (final item in items) {
-        if (item.name.toLowerCase().contains(normalized)) {
-          matches[item.seriesId] = item;
+    const batchSize = 6;
+    for (var start = 0; start < candidates.length; start += batchSize) {
+      final batch = candidates.skip(start).take(batchSize);
+      final results = await Future.wait(
+        batch.map(
+          (category) => seriesItems(client, category.id, priority: true)
+              .timeout(
+                const Duration(milliseconds: 2200),
+                onTimeout: () => <Series>[],
+              )
+              .catchError((_) => <Series>[]),
+        ),
+      );
+      for (final items in results) {
+        for (final item in items) {
+          if (item.name.toLowerCase().contains(normalized)) {
+            matches[item.seriesId] = item;
+          }
         }
       }
+      if (matches.isNotEmpty) break;
     }
     return _memoryPage(
       matches.values.toList(growable: false),
@@ -571,23 +578,30 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
-    final categories = await live(client, priority: true);
     final normalized = query.trim().toLowerCase();
-    final candidates = categories.take(24).toList(growable: false);
-    final results = await Future.wait(
-      candidates.map(
-        (category) => liveStreams(client, category.id, priority: true)
-            .timeout(const Duration(milliseconds: 2200), onTimeout: () => <LiveStream>[])
-            .catchError((_) => <LiveStream>[]),
-      ),
-    );
+    final candidates = categories.take(12).toList(growable: false);
     final matches = <int, LiveStream>{};
-    for (final items in results) {
-      for (final item in items) {
-        if (item.name.toLowerCase().contains(normalized)) {
-          matches[item.streamId] = item;
+    const batchSize = 6;
+    for (var start = 0; start < candidates.length; start += batchSize) {
+      final batch = candidates.skip(start).take(batchSize);
+      final results = await Future.wait(
+        batch.map(
+          (category) => liveStreams(client, category.id, priority: true)
+              .timeout(
+                const Duration(milliseconds: 2200),
+                onTimeout: () => <LiveStream>[],
+              )
+              .catchError((_) => <LiveStream>[]),
+        ),
+      );
+      for (final items in results) {
+        for (final item in items) {
+          if (item.name.toLowerCase().contains(normalized)) {
+            matches[item.streamId] = item;
+          }
         }
       }
+      if (matches.isNotEmpty) break;
     }
     return _memoryPage(
       matches.values.toList(growable: false),
