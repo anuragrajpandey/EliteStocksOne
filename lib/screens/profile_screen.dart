@@ -1961,13 +1961,13 @@ class _FontSelector extends StatefulWidget {
     required this.entryFocusNode,
     required this.upFocusNode,
     required this.downFocusNode,
-    this.leftExitFocusNode,
+    required this.leftExitFocusNode,
   });
 
   final FocusNode entryFocusNode;
   final FocusNode upFocusNode;
   final FocusNode downFocusNode;
-  final FocusNode? leftExitFocusNode;
+  final FocusNode leftExitFocusNode;
 
   @override
   State<_FontSelector> createState() => _FontSelectorState();
@@ -2432,13 +2432,13 @@ class _AccentPicker extends StatefulWidget {
     required this.entryFocusNode,
     required this.upFocusNode,
     required this.downFocusNode,
-    this.leftExitFocusNode,
+    required this.leftExitFocusNode,
   });
 
   final FocusNode entryFocusNode;
   final FocusNode upFocusNode;
   final FocusNode downFocusNode;
-  final FocusNode? leftExitFocusNode;
+  final FocusNode leftExitFocusNode;
 
   @override
   State<_AccentPicker> createState() => _AccentPickerState();
