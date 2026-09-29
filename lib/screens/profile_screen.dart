@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../device_profile.dart';
 import '../downloads.dart';
 import '../library.dart';
-import '../legal.dart';
 import '../models.dart';
 import '../playback_mode.dart';
 import '../refresh.dart';
