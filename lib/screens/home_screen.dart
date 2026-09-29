@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeData? _visibleData;
   int _loadGeneration = 0;
   bool _coldRetryUsed = false;
-  Timer? _hourlyHomeRefreshTimer;
+  Timer? _dailyHomeRefreshTimer;
   final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
@@ -171,8 +171,10 @@ class _HomeScreenState extends State<HomeScreen>
     // was already available.
     _mobileHeroFuture = _bootstrapMobileHero();
     _beginLoad();
-    _hourlyHomeRefreshTimer = Timer.periodic(
-      const Duration(hours: 1),
+    // Refresh Home shelves once every 24 hours so the curated rows rotate
+    // daily without repeatedly rebuilding the full provider catalog.
+    _dailyHomeRefreshTimer = Timer.periodic(
+      const Duration(hours: 24),
       (_) {
         if (mounted) refreshContent();
       },
@@ -182,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
-    _hourlyHomeRefreshTimer?.cancel();
+    _dailyHomeRefreshTimer?.cancel();
     contentRefresh.removeListener(_onRefresh);
     for (final node in [..._continueFocus.values, ..._channelFocus.values]) {
       node.dispose();
