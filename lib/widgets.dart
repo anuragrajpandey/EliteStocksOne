@@ -1792,8 +1792,8 @@ class _SearchFieldState extends State<SearchField> {
                       // center to reopen the keyboard or Down to reach filters.
                       onEditingComplete: () {},
                       textInputAction: TextInputAction.search,
-                      autocorrect: false,
-                      enableSuggestions: false,
+                      autocorrect: !DeviceProfile.isTelevision,
+                      enableSuggestions: !DeviceProfile.isTelevision,
                       style: const TextStyle(fontSize: 15.5),
                       cursorColor: accent,
                       decoration: InputDecoration(
