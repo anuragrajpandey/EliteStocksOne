@@ -553,7 +553,7 @@ class CatalogCache {
         batch.map(
           (category) => seriesItems(client, category.id, priority: true)
               .timeout(
-                const Duration(milliseconds: 2200),
+                const Duration(milliseconds: 1200),
                 onTimeout: () => <Series>[],
               )
               .catchError((_) => <Series>[]),
@@ -608,7 +608,7 @@ class CatalogCache {
         batch.map(
           (category) => liveStreams(client, category.id, priority: true)
               .timeout(
-                const Duration(milliseconds: 2200),
+                const Duration(milliseconds: 1200),
                 onTimeout: () => <LiveStream>[],
               )
               .catchError((_) => <LiveStream>[]),
