@@ -112,8 +112,8 @@ class Tmdb {
   static Future<List<TmdbCatalogItem>> _trendingAllDay() async {
     try {
       final responses = await Future.wait([
-        _getJson('$_base/trending/movie/day?language=en-IN'),
-        _getJson('$_base/trending/tv/day?language=en-IN'),
+        _getJson('$_base/trending/movie/day?api_key=$_key&language=en-IN'),
+        _getJson('$_base/trending/tv/day?api_key=$_key&language=en-IN'),
       ]);
       final items = <TmdbCatalogItem>[
         ..._parseCatalogResults(responses[0], 'movie'),
@@ -229,9 +229,9 @@ class Tmdb {
   }
 
   static String _date(DateTime value) =>
-      '\${value.year.toString().padLeft(4, '0')}-'
-      '\${value.month.toString().padLeft(2, '0')}-'
-      '\${value.day.toString().padLeft(2, '0')}';
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 
   static Future<TmdbInfo?> _lookup(String kind, String rawName) {
     if (_key.trim().isEmpty) return Future.value(null);
