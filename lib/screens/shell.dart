@@ -892,25 +892,35 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         behavior: HitTestBehavior.opaque,
         onTap: () => _select(nav.page, focusContent: false),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? accentInk.withValues(alpha: isDark ? 0.12 : 0.09)
-                : null,
-            borderRadius: BorderRadius.circular(lumenCorner(17)),
-            border: selected
-                ? Border.all(
-                    color: accentInk.withValues(alpha: isDark ? 0.28 : 0.42),
-                  )
-                : null,
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(nav.icon, size: 20, color: selected ? accentInk : muted),
+              AnimatedScale(
+                scale: selected ? 1.08 : 1,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  nav.icon,
+                  size: 20,
+                  color: selected ? accentInk : muted,
+                  shadows: selected
+                      ? [
+                          Shadow(
+                            color: accentInk.withValues(alpha: .72),
+                            blurRadius: 14,
+                          ),
+                          Shadow(
+                            color: accentInk.withValues(alpha: .32),
+                            blurRadius: 26,
+                          ),
+                        ]
+                      : null,
+                ),
+              ),
               const SizedBox(height: 3),
               Text(
                 nav.label,
@@ -923,6 +933,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             ],
           ),
         ),
+
       ),
     );
   }
