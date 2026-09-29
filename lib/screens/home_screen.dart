@@ -734,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen>
           final br = b.movie?.rating ?? b.series?.rating ?? 0;
           return br.compareTo(ar);
         });
-        return all.where((item) => item.image.isNotEmpty).take(20).toList();
+        return _enrichMissingTmdbArtwork(all.take(20).toList());
       }
 
       final candidates = await Tmdb.curated(title);
