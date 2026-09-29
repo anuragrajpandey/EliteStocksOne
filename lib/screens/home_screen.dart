@@ -1011,7 +1011,10 @@ class _HomeScreenState extends State<HomeScreen>
       650.0,
       math.max(150.0, (availableWidth - 14.0) / 2.0),
     );
-    final height = width * (240.0 / 650.0);
+    // Mobile gets a compact 2-up card. The previous 650:240 ratio made a
+    // 180dp-wide card only ~66dp tall, leaving almost no room for artwork or
+    // readable text.
+    final height = DeviceProfile.isTelevision ? 240.0 : 96.0;
 
     return Padding(
       padding: const EdgeInsets.only(top: 22),
@@ -1151,6 +1154,13 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
           !_pageController.hasClients ||
           !_isVisibleOnScreen() ||
           _items.length < 2) {
+        return;
+      }
+      // Do not let the spotlight advance while the user is vertically
+      // scrolling Home. The horizontal hero carousel should only move when
+      // the page is idle, otherwise it feels like the whole Home is moving.
+      final parentScrollable = Scrollable.maybeOf(context);
+      if (parentScrollable?.position.isScrollingNotifier.value ?? false) {
         return;
       }
       final currentPage = _pageController.page?.round() ?? _loopCenterPage;
@@ -2776,7 +2786,11 @@ class _RecentChannelCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardWidth = width;
     final cardHeight = height;
-    final artworkWidth = cardHeight * (255.0 / 240.0);
+    final compact = cardWidth < 320.0;
+    final artworkWidth = compact
+        ? (cardHeight * .78).clamp(58.0, 78.0)
+        : cardHeight * (255.0 / 240.0);
+    final artworkPadding = compact ? 8.0 : 22.0;
 
     return SizedBox(
       width: cardWidth,
@@ -2805,7 +2819,7 @@ class _RecentChannelCard extends StatelessWidget {
                     ColoredBox(color: surfaceHi),
                     if (item.image.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.all(22),
+                        padding: EdgeInsets.all(artworkPadding),
                         child: MediaImage(
                           source: item.image,
                           fit: BoxFit.contain,
@@ -2819,19 +2833,21 @@ class _RecentChannelCard extends StatelessWidget {
                       left: 22,
                       top: 22,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: compact ? 6 : 12,
+                          vertical: compact ? 4 : 8,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFF3B41),
-                          borderRadius: BorderRadius.circular(lumenCorner(8)),
+                          borderRadius: BorderRadius.circular(
+                            lumenCorner(compact ? 6 : 8),
+                          ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'LIVE',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: compact ? 10 : 20,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -2842,7 +2858,10 @@ class _RecentChannelCard extends StatelessWidget {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 9 : 32,
+                    vertical: compact ? 4 : 0,
+                  ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2853,26 +2872,32 @@ class _RecentChannelCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: textHi,
-                          fontSize: DeviceProfile.isTelevision ? 26 : 24,
+                          fontSize: compact
+                              ? (DeviceProfile.isTelevision ? 16 : 13)
+                              : (DeviceProfile.isTelevision ? 26 : 24),
                           fontWeight: FontWeight.w800,
-                          height: 1.12,
+                          height: 1.08,
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      SizedBox(height: compact ? 7 : 18),
                       Row(
                         children: [
                           Icon(
                             Icons.play_circle_fill_rounded,
-                            size: 32,
+                            size: compact ? 18 : 32,
                             color: active ? accent : muted,
                           ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Watch live',
-                            style: TextStyle(
-                              color: active ? accent : muted,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w700,
+                          SizedBox(width: compact ? 5 : 10),
+                          Flexible(
+                            child: Text(
+                              'Watch live',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: active ? accent : muted,
+                                fontSize: compact ? 11 : 19,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
