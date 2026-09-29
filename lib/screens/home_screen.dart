@@ -959,7 +959,11 @@ class _MobilePosterCard extends StatelessWidget {
 }
 
 class _MobileContinuePoster extends StatelessWidget {
-  const _MobileContinuePoster({required this.progress, required this.onTap});
+  const _MobileContinuePoster({
+    super.key,
+    required this.progress,
+    required this.onTap,
+  });
   final Progress progress;
   final VoidCallback onTap;
 
