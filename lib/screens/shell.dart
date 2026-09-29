@@ -907,19 +907,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 child: Icon(
                   nav.icon,
                   size: 20,
-                  color: selected ? accentInk : muted,
-                  shadows: selected
-                      ? [
-                          Shadow(
-                            color: accentInk.withValues(alpha: .72),
-                            blurRadius: 14,
-                          ),
-                          Shadow(
-                            color: accentInk.withValues(alpha: .32),
-                            blurRadius: 26,
-                          ),
-                        ]
-                      : null,
+                  // Mobile dock follows the neutral Netflix visual language.
+                  color: selected ? Colors.white : muted,
+                  shadows: null,
                 ),
               ),
               const SizedBox(height: 3),
@@ -1371,23 +1361,13 @@ class _DockItem extends StatelessWidget {
           // Nine dock entries must fit a 540dp TV viewport after SafeArea.
           margin: const EdgeInsets.only(bottom: 2),
           decoration: BoxDecoration(
-            gradient: selected
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      accentInk.withValues(alpha: isDark ? .20 : .13),
-                      accentInk.withValues(alpha: isDark ? .08 : .045),
-                    ],
-                  )
-                : null,
             color: selected
-                ? null
+                ? Colors.white.withValues(alpha: .14)
                 : (active ? surfaceRaised : Colors.transparent),
             borderRadius: BorderRadius.circular(lumenCorner(15)),
             border: Border.all(
               color: selected
-                  ? accentInk.withValues(alpha: isDark ? 0.36 : 0.48)
+                  ? Colors.white24
                   : (active ? lineStrong : Colors.transparent),
             ),
           ),
@@ -1397,7 +1377,7 @@ class _DockItem extends StatelessWidget {
                 child: Icon(
                   nav.icon,
                   size: 21,
-                  color: selected ? accentInk : (active ? textHi : muted),
+                  color: selected ? Colors.white : (active ? textHi : muted),
                 ),
               ),
               if (selected)
@@ -1408,7 +1388,7 @@ class _DockItem extends StatelessWidget {
                   child: Container(
                     width: 2,
                     decoration: BoxDecoration(
-                      color: accentInk,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(lumenCorner(2)),
                     ),
                   ),
