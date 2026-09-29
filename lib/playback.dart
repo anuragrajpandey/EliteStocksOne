@@ -650,7 +650,7 @@ class PlaybackController extends ChangeNotifier {
       List.unmodifiable(_diagnosticEvents);
 
   String get diagnosticSummary => [
-    'Lumen playback diagnostic',
+    'EliteStocks One playback diagnostic',
     'State: $playbackStateLabel',
     'Endpoint: $endpointLabel',
     'Format: $sourceFormat',
