@@ -6,15 +6,15 @@ flutter_launcher_icons:
   ios: true
   macos:
     generate: true
-    image_path: "assets/icon/lumen_icon_macos.png"
+    image_path: "assets/EliteStocksTVicon.png"
   windows:
     generate: true
-    image_path: "assets/icon/lumen_icon_macos.png"
+    image_path: "assets/EliteStocksTVicon.png"
     icon_size: 256
   remove_alpha_ios: true
-  image_path: "assets/icon/lumen_icon.png"
+  image_path: "assets/EliteStocksTVicon.png"
   adaptive_icon_background: "#080A0B"
-  adaptive_icon_foreground: "assets/icon/lumen_icon_foreground.png"
+  adaptive_icon_foreground: "assets/EliteStocksTVicon.png"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -108,6 +108,8 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/EliteStocksTV.png
+    - assets/EliteStocksTVicon.png
     - assets/lumen_loader.json
     - assets/demo/
 
