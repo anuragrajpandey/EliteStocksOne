@@ -222,16 +222,31 @@ class SearchScreenState extends State<SearchScreen>
     if (wanted == null || wanted == 'movie') {
       CatalogCache.instance
           .vod(c, priority: true)
+          .timeout(
+            const Duration(seconds: 3),
+            onTimeout: () => <Category>[],
+          )
+          .catchError((_) => <Category>[])
           .then((categories) => store('movie', categories));
     }
     if (wanted == null || wanted == 'series') {
       CatalogCache.instance
           .series(c, priority: true)
+          .timeout(
+            const Duration(seconds: 3),
+            onTimeout: () => <Category>[],
+          )
+          .catchError((_) => <Category>[])
           .then((categories) => store('series', categories));
     }
     if (wanted == null || wanted == 'live') {
       CatalogCache.instance
           .live(c, priority: true)
+          .timeout(
+            const Duration(seconds: 3),
+            onTimeout: () => <Category>[],
+          )
+          .catchError((_) => <Category>[])
           .then((categories) => store('live', categories));
     }
   }
