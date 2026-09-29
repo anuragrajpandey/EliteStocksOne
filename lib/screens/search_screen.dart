@@ -2204,14 +2204,14 @@ class SearchScreenState extends State<SearchScreen>
       // once lets those requests occupy every network slot and delays the
       // title the user is waiting for. Secondary types begin as soon as the
       // first movie page settles and do not block its rendering.
+      // Start all media searches together. A slow movie endpoint must not
+      // block Series and Live results from appearing.
       _ensure('movie', 'all');
+      _ensure('series', 'all');
+      _ensure('live', 'all');
       final movies = _has('movie', 'all') || _canShowStale('movie', 'all')
           ? _movieByCat['all']
           : null;
-      if (movies != null) {
-        _ensure('series', 'all');
-        _ensure('live', 'all');
-      }
       final series = _has('series', 'all') || _canShowStale('series', 'all')
           ? _seriesByCat['all']
           : null;
