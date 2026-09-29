@@ -220,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await _bounded(
         save(c),
         widget.storageTimeout,
-        'Lumen reached the provider but could not save this account. '
+        'EliteStocks One reached the provider but could not save this account. '
         'Restart the app and try again.',
       );
       if (!mounted || attempt != _connectAttempt) return;
@@ -546,7 +546,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Text('CONNECT YOUR LIBRARY', style: kSection(color: accentInk)),
         const SizedBox(height: 7),
         const Text(
-          'Welcome to Lumen',
+          'Welcome to EliteStocks One',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,
@@ -671,7 +671,7 @@ class _LoginScreenState extends State<LoginScreen> {
             key: const ValueKey('login-submit'),
             focusNode: _submitFocus,
             autofocus: !DeviceProfile.isTelevision,
-            semanticLabel: _status ?? 'Enter Lumen',
+            semanticLabel: _status ?? 'Enter EliteStocks One',
             focusRadius: 14,
             // The lime button and the normal lime focus ring blended together
             // on a television. A white ring is unambiguous from across a room.
@@ -713,7 +713,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   const SizedBox(width: 8),
                   Text(
-                    _status ?? 'Enter Lumen',
+                    _status ?? 'Enter EliteStocks One',
                     style: TextStyle(
                       color: onAccent,
                       fontWeight: FontWeight.w800,
