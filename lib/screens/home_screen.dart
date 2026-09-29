@@ -464,6 +464,13 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
 
+        final mobileMovies = heroFuture;
+        final mobileSeries = d.seriesCats.isEmpty
+            ? Future.value(const <Series>[])
+            : CatalogCache.instance
+                  .seriesItems(c, d.seriesCats.first.id, priority: true)
+                  .then((items) => seriesRecentlyAdded(items).take(20).toList());
+
         return RefreshIndicator(
           onRefresh: _pullRefresh,
           color: accentInk,
@@ -471,9 +478,70 @@ class _HomeScreenState extends State<HomeScreen>
             padding: const EdgeInsets.only(bottom: 120),
             children: [
               _searchBar(),
-              const SizedBox(height: 10),
-              hero,
-              lastPlayed,
+              const SizedBox(height: 8),
+              _MobileHomeSpotlight(
+                movies: mobileMovies,
+                series: mobileSeries,
+                onMoviePlay: (m) {
+                  final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
+                  PlaybackController.instance.open([
+                    PlayerItem(
+                      c.streamUrl('movie', m.streamId, ext: ext),
+                      _clean(m.name),
+                      progressKey: 'movie:' + m.streamId.toString(),
+                      poster: m.icon,
+                      ext: ext,
+                    ),
+                  ], 0);
+                },
+                onSeriesOpen: (s) => _push(
+                  SeriesDetailScreen(
+                    client: c,
+                    seriesId: s.seriesId,
+                    title: s.name,
+                    preview: s,
+                  ),
+                ),
+              ),
+              AnimatedBuilder(
+                animation: Library.instance,
+                builder: (_, __) => _mobileContinueWatching(),
+              ),
+              FutureBuilder<List<VodStream>>(
+                future: mobileMovies,
+                builder: (_, snap) => _MobilePosterShelf(
+                  title: 'Movies',
+                  items: snap.data ?? const <VodStream>[],
+                  image: (m) => m.icon,
+                  titleOf: (m) => _clean(m.name),
+                  onTap: (m) {
+                    final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
+                    PlaybackController.instance.open([
+                      PlayerItem(
+                        c.streamUrl('movie', m.streamId, ext: ext),
+                        _clean(m.name),
+                        progressKey: 'movie:' + m.streamId.toString(),
+                        poster: m.icon,
+                        ext: ext,
+                      ),
+                    ], 0);
+                  },
+                ),
+              ),
+              FutureBuilder<List<Series>>(
+                future: mobileSeries,
+                builder: (_, snap) => _MobileSeriesShelf(
+                  items: snap.data ?? const <Series>[],
+                  onTap: (s) => _push(
+                    SeriesDetailScreen(
+                      client: c,
+                      seriesId: s.seriesId,
+                      title: s.name,
+                      preview: s,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );
