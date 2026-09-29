@@ -12,13 +12,14 @@ import '../xtream.dart';
 
 typedef LoginClientFactory = XtreamClient Function(XtreamCredentials);
 typedef LoginCredentialSaver = Future<void> Function(XtreamCredentials);
+typedef LoginSuccessHandler = FutureOr<void> Function(XtreamCredentials);
 
 class _LoginCancelled implements Exception {
   const _LoginCancelled();
 }
 
 class LoginScreen extends StatefulWidget {
-  final void Function(XtreamCredentials) onLogin;
+  final LoginSuccessHandler onLogin;
   final LoginClientFactory? clientFactory;
   final LoginCredentialSaver? credentialSaver;
   final Duration connectionTimeout;
@@ -226,7 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted || attempt != _connectAttempt) return;
       authenticated = true;
       setState(() => _status = 'Opening your library…');
-      widget.onLogin(c);
+      await widget.onLogin(c);
       if (mounted && attempt == _connectAttempt) {
         setState(() {
           _busy = false;
