@@ -440,7 +440,10 @@ class CatalogCache {
       );
     }
     if (cached.items.isNotEmpty || anyLocal) {
-      if (categoryId == null && !exactLocal) {
+      // Never import the entire provider while the user is actively searching.
+      // A large IPTV catalog can contain hundreds of thousands of entries and
+      // that background import can spike memory/CPU and terminate the app.
+      if (categoryId == null && !exactLocal && query.trim().isEmpty) {
         unawaited(_importAllVod(client, scope));
       } else {
         unawaited(vodStreams(client, categoryId, priority: true));
@@ -490,8 +493,8 @@ class CatalogCache {
         .catchError((_) => <Category>[]);
     final normalized = query.trim().toLowerCase();
     final matches = <int, VodStream>{};
-    const candidateLimit = 8;
-    const batchSize = 2;
+    const candidateLimit = 6;
+    const batchSize = 3;
     for (var start = 0;
         start < categories.length && start < candidateLimit;
         start += batchSize) {
@@ -503,7 +506,7 @@ class CatalogCache {
             category.id,
             priority: true,
           ).timeout(
-            const Duration(milliseconds: 1200),
+            const Duration(milliseconds: 900),
             onTimeout: () => <VodStream>[],
           ).catchError((_) => <VodStream>[]),
         ),
@@ -544,16 +547,16 @@ class CatalogCache {
         )
         .catchError((_) => <Category>[]);
     final normalized = query.trim().toLowerCase();
-    final candidates = categories.take(8).toList(growable: false);
+    final candidates = categories.take(6).toList(growable: false);
     final matches = <int, Series>{};
-    const batchSize = 2;
+    const batchSize = 3;
     for (var start = 0; start < candidates.length; start += batchSize) {
       final batch = candidates.skip(start).take(batchSize);
       final results = await Future.wait(
         batch.map(
           (category) => seriesItems(client, category.id, priority: true)
               .timeout(
-                const Duration(milliseconds: 1200),
+                const Duration(milliseconds: 900),
                 onTimeout: () => <Series>[],
               )
               .catchError((_) => <Series>[]),
@@ -599,16 +602,16 @@ class CatalogCache {
         )
         .catchError((_) => <Category>[]);
     final normalized = query.trim().toLowerCase();
-    final candidates = categories.take(8).toList(growable: false);
+    final candidates = categories.take(6).toList(growable: false);
     final matches = <int, LiveStream>{};
-    const batchSize = 2;
+    const batchSize = 3;
     for (var start = 0; start < candidates.length; start += batchSize) {
       final batch = candidates.skip(start).take(batchSize);
       final results = await Future.wait(
         batch.map(
           (category) => liveStreams(client, category.id, priority: true)
               .timeout(
-                const Duration(milliseconds: 1200),
+                const Duration(milliseconds: 900),
                 onTimeout: () => <LiveStream>[],
               )
               .catchError((_) => <LiveStream>[]),
@@ -692,7 +695,9 @@ class CatalogCache {
       );
     }
     if (cached.items.isNotEmpty || anyLocal) {
-      if (categoryId == null && !exactLocal) {
+      // Searching must stay lightweight. Do not kick off the full-series
+      // catalog import behind the search UI.
+      if (categoryId == null && !exactLocal && query.trim().isEmpty) {
         unawaited(_importAllSeries(client, scope));
       } else {
         unawaited(seriesItems(client, categoryId, priority: true));
@@ -785,7 +790,8 @@ class CatalogCache {
       );
     }
     if (cached.items.isNotEmpty || anyLocal) {
-      if (categoryId == null && !exactLocal) {
+      // Keep live search isolated from the full-provider import path.
+      if (categoryId == null && !exactLocal && query.trim().isEmpty) {
         unawaited(_importAllLive(client, scope));
       } else {
         unawaited(liveStreams(client, categoryId, priority: true));
