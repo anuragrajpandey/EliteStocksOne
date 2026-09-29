@@ -706,22 +706,23 @@ class PlaybackController extends ChangeNotifier {
     if (newItems.isEmpty) return;
     if (captureReturnFocus) _returnFocus.capture();
     final safeIndex = i.clamp(0, newItems.length - 1);
-    if (DeviceProfile.isTelevision && AndroidCompatibilityPlayer.isAvailable) {
-      // A native SurfaceView avoids the audio-only/black-frame failure seen
-      // when some Android TV compositors combine Flutter's texture surface
-      // with MediaCodec. Media3 also owns the audio clock, eliminating the A/V
-      // drift reported during longer TV playback sessions.
-      _openNativeTelevision(newItems, safeIndex);
+    if (AndroidCompatibilityPlayer.isAvailable) {
+      // Android's native Media3 path is now the primary playback engine on
+      // both phones and TVs. This avoids process-level libmpv/texture crashes
+      // when opening otherwise valid provider streams. The native player has
+      // its own bounded playlist, recovery, subtitles and controls. If the
+      // Activity cannot be opened, fall back to the embedded engine.
+      _openNativeAndroid(newItems, safeIndex);
       return;
     }
     _openEmbedded(newItems, safeIndex);
   }
 
-  Future<void> _openNativeTelevision(
+  Future<void> _openNativeAndroid(
     List<PlayerItem> newItems,
     int safeIndex,
   ) async {
-    // Never marshal an entire provider/search result into the native TV
+    // Never marshal an entire provider/search result into the native Android
     // player. A catalog can contain hundreds of thousands of entries, and
     // building that platform-channel payload can exhaust RAM or stall the UI.
     const radius = 100;
