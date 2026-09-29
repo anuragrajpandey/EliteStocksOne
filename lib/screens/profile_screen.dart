@@ -2436,7 +2436,6 @@ class _AccentPicker extends StatefulWidget {
   final FocusNode entryFocusNode;
   final FocusNode upFocusNode;
   final FocusNode downFocusNode;
-  final FocusNode? leftExitFocusNode;
 
   @override
   State<_AccentPicker> createState() => _AccentPickerState();
