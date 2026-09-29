@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 
 /// TMDB metadata enrichment for artwork, titles, dates and details.
@@ -12,48 +13,225 @@ class Tmdb {
 
   static final Map<String, Future<TmdbInfo?>> _cache = {};
   static Future<List<TmdbTrendingItem>>? _indiaTvFuture;
+  static final Map<String, Future<List<TmdbCatalogItem>>> _curatedCache = {};
 
   static Future<TmdbInfo?> movie(String rawName) => _lookup('movie', rawName);
   static Future<TmdbInfo?> tv(String rawName) => _lookup('tv', rawName);
 
-  /// Returns the current TMDB popularity leaders for TV that have availability
-  /// data for India. TMDB's discover endpoint supports [watch_region] together
-  /// with monetisation/provider filters, which is the closest regional
-  /// equivalent to a "trending in India" shelf.
-  static Future<List<TmdbTrendingItem>> trendingTvIndia() {
-    if (_key.trim().isEmpty) {
-      return Future.value(const <TmdbTrendingItem>[]);
-    }
-    return _indiaTvFuture ??= _fetchTrendingTvIndia();
+  static Future<List<TmdbTrendingItem>> trendingTvIndia({
+    int candidateLimit = 40,
+  }) {
+    if (_key.trim().isEmpty) return Future.value(const <TmdbTrendingItem>[]);
+    return _indiaTvFuture ??= _fetchTrendingTvIndia(
+      candidateLimit.clamp(10, 60),
+    );
   }
 
-  static Future<List<TmdbTrendingItem>> _fetchTrendingTvIndia() async {
+  static Future<List<TmdbTrendingItem>> _fetchTrendingTvIndia(
+    int candidateLimit,
+  ) async {
     try {
-      final uri = Uri.parse(
-        '$_base/discover/tv'
-        '?api_key=$_key'
-        '&language=en-IN'
-        '&watch_region=IN'
-        '&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy'
-        '&sort_by=popularity.desc'
-        '&include_adult=false'
-        '&page=1',
-      );
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) return const <TmdbTrendingItem>[];
-      final raw = (jsonDecode(response.body)['results'] as List?) ?? const [];
-      return raw
-          .whereType<Map>()
-          .map((item) => TmdbTrendingItem.fromJson(
-                item.cast<String, dynamic>(),
-              ))
-          .where((item) => item.title.isNotEmpty && item.poster.isNotEmpty)
-          .take(10)
-          .toList(growable: false);
+      final pages = (candidateLimit / 20).ceil().clamp(1, 3);
+      final responses = await Future.wait([
+        for (var page = 1; page <= pages; page++)
+          http.get(
+            Uri.parse(
+              '$_base/discover/tv'
+              '?api_key=$_key'
+              '&language=en-IN'
+              '&watch_region=IN'
+              '&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy'
+              '&sort_by=popularity.desc'
+              '&include_adult=false'
+              '&page=$page',
+            ),
+          ).timeout(const Duration(seconds: 10)),
+      ]);
+      final result = <TmdbTrendingItem>[];
+      for (final response in responses) {
+        if (response.statusCode != 200) continue;
+        final raw = (jsonDecode(response.body)['results'] as List?) ?? const [];
+        for (final item in raw.whereType<Map>()) {
+          final parsed = TmdbTrendingItem.fromJson(
+            item.cast<String, dynamic>(),
+          );
+          if (parsed.title.isNotEmpty && parsed.poster.isNotEmpty) {
+            result.add(parsed);
+          }
+          if (result.length >= candidateLimit) break;
+        }
+        if (result.length >= candidateLimit) break;
+      }
+      return result.take(candidateLimit).toList(growable: false);
     } catch (_) {
       return const <TmdbTrendingItem>[];
     }
   }
+
+  static Future<List<TmdbCatalogItem>> curated(String shelf) {
+    if (_key.trim().isEmpty) {
+      return Future.value(const <TmdbCatalogItem>[]);
+    }
+    return _curatedCache.putIfAbsent(shelf, () => _fetchCurated(shelf));
+  }
+
+  static Future<List<TmdbCatalogItem>> _fetchCurated(String shelf) async {
+    final now = DateTime.now().toUtc();
+    final recent = now.subtract(const Duration(days: 120));
+    final fresh = now.subtract(const Duration(days: 45));
+
+    switch (shelf) {
+      case 'Trending Now':
+        return _trendingAllDay();
+      case 'What\'s Hot':
+        return _discoverBoth(sortBy: 'popularity.desc');
+      case 'Must Watch':
+        return _discoverBoth(sortBy: 'vote_average.desc', voteCountGte: 200);
+      case 'Popular Picks':
+        return _discoverBoth(sortBy: 'vote_count.desc');
+      case 'New & Noteworthy':
+        return _discoverBoth(sortBy: 'popularity.desc', releaseGte: recent);
+      case 'Fan Favorites':
+        return _discoverBoth(sortBy: 'vote_count.desc', voteCountGte: 500);
+      case 'Critics\' Choice':
+        return _discoverBoth(sortBy: 'vote_average.desc', voteCountGte: 1000);
+      case 'Late Night Picks':
+        return _discoverBoth(
+          sortBy: 'popularity.desc',
+          genres: '27|53|80|9648',
+        );
+      case 'Fresh Releases':
+        return _discoverBoth(sortBy: 'popularity.desc', releaseGte: fresh);
+      case 'Editor\'s Picks':
+        return _discoverBoth(sortBy: 'popularity.desc', voteCountGte: 100);
+      default:
+        return const <TmdbCatalogItem>[];
+    }
+  }
+
+  static Future<List<TmdbCatalogItem>> _trendingAllDay() async {
+    try {
+      final responses = await Future.wait([
+        _getJson('$_base/trending/movie/day?language=en-IN'),
+        _getJson('$_base/trending/tv/day?language=en-IN'),
+      ]);
+      final items = <TmdbCatalogItem>[
+        ..._parseCatalogResults(responses[0], 'movie'),
+        ..._parseCatalogResults(responses[1], 'tv'),
+      ];
+      items.sort((a, b) => b.popularity.compareTo(a.popularity));
+      return items.take(60).toList(growable: false);
+    } catch (_) {
+      return const <TmdbCatalogItem>[];
+    }
+  }
+
+  static Future<List<TmdbCatalogItem>> _discoverBoth({
+    required String sortBy,
+    int? voteCountGte,
+    DateTime? releaseGte,
+    String? genres,
+  }) async {
+    try {
+      final responses = await Future.wait([
+        _getJson(_discoverUri(
+          'movie',
+          sortBy: sortBy,
+          voteCountGte: voteCountGte,
+          releaseGte: releaseGte,
+          genres: genres,
+        ).toString()),
+        _getJson(_discoverUri(
+          'tv',
+          sortBy: sortBy,
+          voteCountGte: voteCountGte,
+          releaseGte: releaseGte,
+          genres: genres,
+        ).toString()),
+      ]);
+      final items = <TmdbCatalogItem>[
+        ..._parseCatalogResults(responses[0], 'movie'),
+        ..._parseCatalogResults(responses[1], 'tv'),
+      ];
+      items.sort((a, b) => b.score.compareTo(a.score));
+      return items.take(60).toList(growable: false);
+    } catch (_) {
+      return const <TmdbCatalogItem>[];
+    }
+  }
+
+  static Uri _discoverUri(
+    String kind, {
+    required String sortBy,
+    int? voteCountGte,
+    DateTime? releaseGte,
+    String? genres,
+  }) {
+    final params = <String, String>{
+      'api_key': _key,
+      'language': 'en-IN',
+      'region': 'IN',
+      'include_adult': 'false',
+      'sort_by': sortBy,
+      'page': '1',
+    };
+    if (kind == 'tv') {
+      params['include_null_first_air_dates'] = 'false';
+      if (releaseGte != null) params['first_air_date.gte'] = _date(releaseGte);
+    } else if (releaseGte != null) {
+      params['primary_release_date.gte'] = _date(releaseGte);
+    }
+    if (voteCountGte != null) params['vote_count.gte'] = '$voteCountGte';
+    if (genres != null) params['with_genres'] = genres;
+    return Uri.parse('$_base/discover/$kind').replace(queryParameters: params);
+  }
+
+  static Future<Map<String, dynamic>> _getJson(String url) async {
+    final response = await http.get(Uri.parse(url)).timeout(
+      const Duration(seconds: 10),
+    );
+    if (response.statusCode != 200) return const <String, dynamic>{};
+    final decoded = jsonDecode(response.body);
+    return decoded is Map
+        ? decoded.cast<String, dynamic>()
+        : const <String, dynamic>{};
+  }
+
+  static List<TmdbCatalogItem> _parseCatalogResults(
+    Map<String, dynamic> json,
+    String kind,
+  ) {
+    final raw = (json['results'] as List?) ?? const [];
+    return raw.whereType<Map>().map((item) {
+      final j = item.cast<String, dynamic>();
+      final release =
+          (j['release_date'] ?? j['first_air_date'] ?? '').toString();
+      return TmdbCatalogItem(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        kind: kind,
+        title: (j['title'] ??
+                j['name'] ??
+                j['original_title'] ??
+                j['original_name'] ??
+                '')
+            .toString()
+            .trim(),
+        poster: _path(j['poster_path'], 'w500'),
+        backdrop: _path(j['backdrop_path'], 'w1280'),
+        releaseDate: release,
+        popularity: (j['popularity'] as num?)?.toDouble() ?? 0,
+        rating: (j['vote_average'] as num?)?.toDouble() ?? 0,
+        voteCount: (j['vote_count'] as num?)?.toInt() ?? 0,
+      );
+    }).where((item) => item.title.isNotEmpty && item.poster.isNotEmpty).toList(
+          growable: false,
+        );
+  }
+
+  static String _date(DateTime value) =>
+      '\${value.year.toString().padLeft(4, '0')}-'
+      '\${value.month.toString().padLeft(2, '0')}-'
+      '\${value.day.toString().padLeft(2, '0')}';
 
   static Future<TmdbInfo?> _lookup(String kind, String rawName) {
     if (_key.trim().isEmpty) return Future.value(null);
@@ -192,6 +370,36 @@ class TmdbTrendingItem {
   }
 
   String get year => RegExp(r'^(\d{4})').firstMatch(releaseDate)?.group(1) ?? '';
+}
+
+class TmdbCatalogItem {
+  final int id;
+  final String kind;
+  final String title;
+  final String poster;
+  final String backdrop;
+  final String releaseDate;
+  final double popularity;
+  final double rating;
+  final int voteCount;
+
+  const TmdbCatalogItem({
+    required this.id,
+    required this.kind,
+    required this.title,
+    required this.poster,
+    required this.backdrop,
+    required this.releaseDate,
+    required this.popularity,
+    required this.rating,
+    required this.voteCount,
+  });
+
+  String get year =>
+      RegExp(r'^(\d{4})').firstMatch(releaseDate)?.group(1) ?? '';
+
+  double get score =>
+      popularity + rating * 12 + math.min(voteCount, 5000) / 5000;
 }
 
 class TmdbInfo {
