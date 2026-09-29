@@ -7,7 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import '../xtream.dart';
 
-/// "Your Lumen" — watch-time stats: total time, this-week activity, the
+/// EliteStocks One watch-time stats: total time, this-week activity, the
 /// movie/series/live split, and top categories.
 class StatsScreen extends StatefulWidget {
   final XtreamClient client;
@@ -107,7 +107,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               eyebrow: 'A blank reel',
                               title: 'Your story starts with Play',
                               message:
-                                  'Watch something in Lumen and this space will quietly map your week, formats and favourite collections.',
+                                  'Watch something in EliteStocks One and this space will quietly map your week, formats and favourite collections.',
                             )
                           : SingleChildScrollView(
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 48),
