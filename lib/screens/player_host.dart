@@ -224,6 +224,8 @@ class _PlayerHostState extends State<PlayerHost> {
   bool _muted = false;
   bool _controlsLocked = false;
   Timer? _hideTimer;
+  Timer? _lockButtonTimer;
+  bool _lockedButtonVisible = false;
   BoxFit _fit = BoxFit.contain;
   double _rate = 1.0;
   double _zoomScale = 1.0, _zoomStart = 1.0;
@@ -316,6 +318,7 @@ class _PlayerHostState extends State<PlayerHost> {
     _scPlaySub?.cancel();
     Pip.instance.active.removeListener(_onPip);
     _hideTimer?.cancel();
+    _lockButtonTimer?.cancel();
     _hudTimer?.cancel();
     _sleepTimer?.cancel();
     _restoreBrightness();
@@ -943,6 +946,8 @@ class _PlayerHostState extends State<PlayerHost> {
   void _resetForItem() {
     _controls = true;
     _controlsLocked = false;
+    _lockedButtonVisible = false;
+    _lockButtonTimer?.cancel();
     _zoomScale = 1.0;
     _fit = BoxFit.contain;
     _rate = 1.0;
@@ -1049,8 +1054,24 @@ class _PlayerHostState extends State<PlayerHost> {
     });
   }
 
+  void _showLockedButton() {
+    if (!_controlsLocked || DeviceProfile.isTelevision || _isDesktop) return;
+    _lockButtonTimer?.cancel();
+    if (mounted) setState(() => _lockedButtonVisible = true);
+    _lockButtonTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _controlsLocked) {
+        setState(() => _lockedButtonVisible = false);
+      }
+    });
+  }
+
   void _tap() {
-    if (_controlsLocked) return;
+    if (_controlsLocked) {
+      // While locked, tapping the video never changes playback controls.
+      // It only reveals the unlock affordance briefly.
+      _showLockedButton();
+      return;
+    }
     setState(() => _controls = !_controls);
     if (_controls) _scheduleHide();
   }
@@ -1060,11 +1081,15 @@ class _PlayerHostState extends State<PlayerHost> {
     setState(() {
       _controlsLocked = !_controlsLocked;
       _controls = !_controlsLocked;
+      _lockedButtonVisible = _controlsLocked;
     });
     if (_controlsLocked) {
       _hideTimer?.cancel();
+      _showLockedButton();
       _flashHud('Controls locked', Icons.lock_rounded);
     } else {
+      _lockButtonTimer?.cancel();
+      _lockedButtonVisible = false;
       _scheduleHide();
       _flashHud('Controls unlocked', Icons.lock_open_rounded);
     }
@@ -1267,7 +1292,7 @@ class _PlayerHostState extends State<PlayerHost> {
         onHover: _onHover,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: _controlsLocked ? null : _tap,
+          onTap: _tap,
           onDoubleTapDown: _controlsLocked
               ? null
               : (d) => _doubleTapX = d.localPosition.dx,
@@ -1285,7 +1310,10 @@ class _PlayerHostState extends State<PlayerHost> {
             fit: StackFit.expand,
             children: [
               _hudOverlay(),
-              if (_controlsLocked && !DeviceProfile.isTelevision && !_isDesktop)
+              if (_controlsLocked &&
+                  _lockedButtonVisible &&
+                  !DeviceProfile.isTelevision &&
+                  !_isDesktop)
                 _lockedControlsButton()
               else
                 AnimatedOpacity(
@@ -1300,9 +1328,15 @@ class _PlayerHostState extends State<PlayerHost> {
               // status lane. Only one transient message can be visible.
               _playbackStatusPill(),
               // Terminal recovery stays above the complete bottom stack.
-              _recoveryOverlay(),
+              IgnorePointer(
+                ignoring: _controlsLocked,
+                child: _recoveryOverlay(),
+              ),
               // Skip-intro / Up-next prompts (shown regardless of control chrome).
-              _autoOverlays(),
+              IgnorePointer(
+                ignoring: _controlsLocked,
+                child: _autoOverlays(),
+              ),
               if (_panelKind != null) _panel(),
             ],
           ),
