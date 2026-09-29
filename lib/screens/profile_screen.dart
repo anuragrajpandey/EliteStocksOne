@@ -1962,7 +1962,6 @@ class _FontSelector extends StatefulWidget {
     required this.entryFocusNode,
     required this.upFocusNode,
     required this.downFocusNode,
-    this.leftExitFocusNode,
   });
 
   final FocusNode entryFocusNode;
