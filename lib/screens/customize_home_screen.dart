@@ -270,14 +270,14 @@ class _CustomizeHomeScreenState extends State<CustomizeHomeScreen> {
             const SizedBox(height: 7),
             Text(
               shelves.isEmpty
-                  ? 'Lumen mix'
+                  ? 'EliteStocks One mix'
                   : '${shelves.length} custom shelves',
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             const SizedBox(height: 4),
             Text(
               shelves.isEmpty
-                  ? 'Lumen will blend recommendations, recent additions and live picks.'
+                  ? 'EliteStocks One will blend recommendations, recent additions and live picks.'
                   : 'Use the arrows to tune the order. The first shelf appears highest.',
               style: TextStyle(color: subtle, fontSize: 12.5, height: 1.4),
             ),
@@ -331,7 +331,7 @@ class _CustomizeHomeScreenState extends State<CustomizeHomeScreen> {
             Expanded(
               child: Text(
                 count == 0
-                    ? 'Using Lumen’s default mix'
+                    ? 'Using EliteStocks One’s default mix'
                     : '$count shelves selected · order can be tuned on a larger screen',
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
