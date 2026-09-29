@@ -1229,18 +1229,30 @@ class SearchScreenState extends State<SearchScreen>
       ),
     };
     final query = _q.trim().toLowerCase();
-    final values = <dynamic>[for (final batch in batches) ...batch]
-        .where((value) {
-          if (query.isEmpty) return true;
-          final name = switch (value) {
-            VodStream item => item.name,
-            Series item => item.name,
-            LiveStream item => item.name,
-            _ => '$value',
-          };
-          return name.toLowerCase().contains(query);
-        })
-        .toList(growable: true);
+    // Never materialize/sort an unbounded search result on the UI isolate.
+    // Multi-source categories can otherwise combine several huge provider
+    // lists before the first 48 results are even displayed.
+    const maxSearchMatches = 500;
+    final values = <dynamic>[];
+    for (final batch in batches) {
+      for (final value in batch) {
+        if (query.isEmpty) {
+          values.add(value);
+          continue;
+        }
+        final name = switch (value) {
+          VodStream item => item.name,
+          Series item => item.name,
+          LiveStream item => item.name,
+          _ => '$value',
+        };
+        if (name.toLowerCase().contains(query)) {
+          values.add(value);
+          if (values.length >= maxSearchMatches) break;
+        }
+      }
+      if (query.isNotEmpty && values.length >= maxSearchMatches) break;
+    }
     int compareName(dynamic a, dynamic b) {
       String name(dynamic value) => switch (value) {
         VodStream item => item.name,
