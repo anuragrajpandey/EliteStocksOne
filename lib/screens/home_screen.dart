@@ -85,6 +85,32 @@ String _clean(String s) {
   return t.isEmpty ? s : t;
 }
 
+
+const _mobileCuratedShelfTitles = <String>[
+  'Trending Now',
+  'What\'s Hot',
+  'Must Watch',
+  'Popular Picks',
+  'New & Noteworthy',
+  'Fan Favorites',
+  'Critics\' Choice',
+  'Late Night Picks',
+  'Fresh Releases',
+  'Editor\'s Picks',
+];
+
+class _MobileProviderPool {
+  const _MobileProviderPool({required this.movies, required this.series});
+  final List<VodStream> movies;
+  final List<Series> series;
+}
+
+class _MobileCuratedShelf {
+  const _MobileCuratedShelf({required this.title, required this.future});
+  final String title;
+  final Future<List<_MobileFeature>> future;
+}
+
 class HomeScreen extends StatefulWidget {
   final XtreamClient client;
   final VoidCallback onBrowse;
@@ -112,18 +138,15 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeData? _visibleData;
   int _loadGeneration = 0;
   bool _coldRetryUsed = false;
-  Timer? _catalogRevisionDebounce;
-  final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
+    final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
   // Futures are owned by screen state, not created during build. This keeps
   // scroll/rebuild cycles from restarting catalog requests.
   Future<List<_MobileFeature>> _mobileHeroFuture =
       Future.value(const <_MobileFeature>[]);
-  Map<String, Future<List<VodStream>>> _mobileMovieShelfFutures =
-      <String, Future<List<VodStream>>>{};
-  Map<String, Future<List<Series>>> _mobileSeriesShelfFutures =
-      <String, Future<List<Series>>>{};
+  List<_MobileCuratedShelf> _mobileCuratedShelves =
+      const <_MobileCuratedShelf>[];
 
   @override
   bool get wantKeepAlive => true;
@@ -133,29 +156,15 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     _beginLoad();
     contentRefresh.addListener(_onRefresh);
-    CatalogCache.instance.revision.addListener(_onCatalogRevision);
   }
 
   @override
   void dispose() {
-    _catalogRevisionDebounce?.cancel();
     contentRefresh.removeListener(_onRefresh);
-    CatalogCache.instance.revision.removeListener(_onCatalogRevision);
     for (final node in [..._continueFocus.values, ..._channelFocus.values]) {
       node.dispose();
     }
     super.dispose();
-  }
-
-  void _onCatalogRevision() {
-    _catalogRevisionDebounce?.cancel();
-    // One provider refresh may update categories and several item buckets in
-    // quick succession. Coalesce those notifications into one quiet upgrade
-    // instead of remounting Home repeatedly and flashing its artwork.
-    _catalogRevisionDebounce = Timer(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      setState(_beginLoad);
-    });
   }
 
   void _onRefresh() {
@@ -492,9 +501,7 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
 
-        final movieCategories = d.vodCats.take(5).toList(growable: false);
-        final seriesCategories = d.seriesCats.take(5).toList(growable: false);
-        final shelfCount = 4 + movieCategories.length + seriesCategories.length;
+        final shelfCount = 4 + _mobileCuratedShelves.length;
 
         return RefreshIndicator(
           onRefresh: _pullRefresh,
@@ -532,12 +539,12 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                     ], 0);
                   },
-                  onSeriesOpen: (s) => _push(
+                  onSeriesOpen: (series) => _push(
                     SeriesDetailScreen(
                       client: c,
-                      seriesId: s.seriesId,
-                      title: s.name,
-                      preview: s,
+                      seriesId: series.seriesId,
+                      title: series.name,
+                      preview: series,
                     ),
                   ),
                 );
@@ -555,48 +562,40 @@ class _HomeScreenState extends State<HomeScreen>
                 );
               }
 
-              final shelfIndex = index - 4;
-              if (shelfIndex < movieCategories.length) {
-                final category = movieCategories[shelfIndex];
-                return _MobilePosterShelfLoader(
-                  key: ValueKey('mobile-movie-shelf-' + category.id),
-                  title: category.name.trim().isEmpty
-                      ? 'Movies'
-                      : category.name.trim(),
-                  future: _mobileMovieShelfFutures[category.id],
-                  onTap: (m) {
-                    final ext = m.containerExtension.isEmpty
+              final shelf = _mobileCuratedShelves[index - 4];
+              return _MobileCuratedShelfLoader(
+                key: ValueKey('mobile-curated-' + shelf.title),
+                title: shelf.title,
+                future: shelf.future,
+                onTap: (item) {
+                  final movie = item.movie;
+                  if (movie != null) {
+                    final ext = movie.containerExtension.isEmpty
                         ? 'mp4'
-                        : m.containerExtension;
+                        : movie.containerExtension;
                     PlaybackController.instance.open([
                       PlayerItem(
-                        c.streamUrl('movie', m.streamId, ext: ext),
-                        _clean(m.name),
-                        progressKey: 'movie:' + m.streamId.toString(),
-                        poster: m.icon,
+                        c.streamUrl('movie', movie.streamId, ext: ext),
+                        _clean(movie.name),
+                        progressKey: 'movie:' + movie.streamId.toString(),
+                        poster: item.image,
                         ext: ext,
                       ),
                     ], 0);
-                  },
-                );
-              }
-
-              final seriesIndex = shelfIndex - movieCategories.length;
-              final category = seriesCategories[seriesIndex];
-              return _MobileSeriesShelfLoader(
-                key: ValueKey('mobile-series-shelf-' + category.id),
-                title: category.name.trim().isEmpty
-                    ? 'Series'
-                    : category.name.trim(),
-                future: _mobileSeriesShelfFutures[category.id],
-                onTap: (s) => _push(
-                  SeriesDetailScreen(
-                    client: c,
-                    seriesId: s.seriesId,
-                    title: s.name,
-                    preview: s,
-                  ),
-                ),
+                    return;
+                  }
+                  final series = item.series;
+                  if (series != null) {
+                    _push(
+                      SeriesDetailScreen(
+                        client: c,
+                        seriesId: series.seriesId,
+                        title: series.name,
+                        preview: series,
+                      ),
+                    );
+                  }
+                },
               );
             },
           ),
@@ -610,64 +609,201 @@ class _HomeScreenState extends State<HomeScreen>
     final seriesCategories = data.seriesCats.take(5).toList(growable: false);
     final client = widget.client;
 
-    _mobileMovieShelfFutures = {
+    // Keep the provider scan bounded: five movie + five series categories,
+    // twenty recent rows from each. The ten Home shelves are custom rankings
+    // over this provider pool, not the provider's category names.
+    final movieFutures = <Future<List<VodStream>>>[
       for (final category in movieCategories)
-        category.id: CatalogCache.instance
+        CatalogCache.instance
             .vodStreams(client, category.id, priority: true)
-            .then((items) => moviesRecentlyAdded(items).take(20).toList())
+            .then(
+              (items) => moviesRecentlyAdded(items)
+                  .where((item) => item.name.trim().isNotEmpty)
+                  .take(20)
+                  .toList(growable: false),
+            )
             .catchError((_) => <VodStream>[]),
-    };
-    _mobileSeriesShelfFutures = {
+    ];
+    final seriesFutures = <Future<List<Series>>>[
       for (final category in seriesCategories)
-        category.id: CatalogCache.instance
+        CatalogCache.instance
             .seriesItems(client, category.id, priority: true)
-            .then((items) => seriesRecentlyAdded(items).take(20).toList())
+            .then(
+              (items) => seriesRecentlyAdded(items)
+                  .where((item) => item.name.trim().isNotEmpty)
+                  .take(20)
+                  .toList(growable: false),
+            )
             .catchError((_) => <Series>[]),
-    };
-    _mobileHeroFuture = _mobileHeroItems(
-      client,
-      seriesCategories,
-    );
+    ];
+
+    final providerPoolFuture = Future.wait([
+      ...movieFutures,
+      ...seriesFutures,
+    ]).then((groups) {
+      final movies = <VodStream>[];
+      final series = <Series>[];
+      for (var i = 0; i < movieFutures.length; i++) {
+        movies.addAll(groups[i] as List<VodStream>);
+      }
+      for (var i = movieFutures.length; i < groups.length; i++) {
+        series.addAll(groups[i] as List<Series>);
+      }
+      return _MobileProviderPool(movies: movies, series: series);
+    });
+
+    _mobileHeroFuture = _mobileHeroItems(client, providerPoolFuture);
+
+    _mobileCuratedShelves = [
+      for (final title in _mobileCuratedShelfTitles)
+        _MobileCuratedShelf(
+          title: title,
+          future: _buildCuratedShelf(title, providerPoolFuture),
+        ),
+    ];
   }
 
   Future<List<_MobileFeature>> _mobileHeroItems(
     XtreamClient client,
-    List<Category> seriesCategories,
+    Future<_MobileProviderPool> providerPoolFuture,
   ) async {
     try {
-      final trending = await Tmdb.trendingTvIndia();
+      final pool = await providerPoolFuture;
+      final trending = await Tmdb.trendingTvIndia(candidateLimit: 40);
       if (trending.isEmpty) return const <_MobileFeature>[];
 
-      final seriesResults = await Future.wait([
-        for (final category in seriesCategories)
-          CatalogCache.instance
-              .seriesItems(client, category.id, priority: true)
-              .catchError((_) => <Series>[]),
-      ]);
       final seriesMap = <String, Series>{};
-      for (final items in seriesResults) {
-        for (final item in items) {
-          final key = _titleKey(item.name);
-          if (key.isNotEmpty) seriesMap[key] = item;
-        }
+      for (final item in pool.series) {
+        final key = _titleKey(item.name);
+        if (key.isNotEmpty) seriesMap.putIfAbsent(key, () => item);
       }
 
       final result = <_MobileFeature>[];
-      for (final tmdb in trending.take(10)) {
+      for (final tmdb in trending) {
         final provider = seriesMap[_titleKey(tmdb.title)];
-        if (provider != null) {
+        if (provider == null) continue;
+        result.add(
+          _MobileFeature.series(
+            provider,
+            tmdbTitle: tmdb.title,
+            tmdbImage: tmdb.backdrop.isNotEmpty ? tmdb.backdrop : tmdb.poster,
+            tmdbYear: tmdb.year,
+          ),
+        );
+        if (result.length == 10) break;
+      }
+      return result;
+    } catch (_) {
+      return const <_MobileFeature>[];
+    }
+  }
+
+  Future<List<_MobileFeature>> _buildCuratedShelf(
+    String title,
+    Future<_MobileProviderPool> providerPoolFuture,
+  ) async {
+    try {
+      final pool = await providerPoolFuture;
+
+      // These two shelves are based on the provider's own dates, while TMDB
+      // still supplies missing artwork at card-render time.
+      if (title == 'New & Noteworthy') {
+        final all = <_MobileFeature>[
+          ...moviesRecentlyAdded(pool.movies).map(
+            (item) => _MobileFeature.movie(item),
+          ),
+          ...seriesRecentlyAdded(pool.series).map(
+            (item) => _MobileFeature.series(item),
+          ),
+        ];
+        all.sort((a, b) {
+          final aDate = a.movie?.added ?? a.series?.releaseDate ?? '';
+          final bDate = b.movie?.added ?? b.series?.releaseDate ?? '';
+          return mediaAddedValue(bDate).compareTo(mediaAddedValue(aDate));
+        });
+        return all.where((item) => item.image.isNotEmpty).take(20).toList();
+      }
+
+      if (title == 'Editor\'s Picks') {
+        final all = <_MobileFeature>[
+          ...pool.movies.map((item) => _MobileFeature.movie(item)),
+          ...pool.series.map((item) => _MobileFeature.series(item)),
+        ];
+        all.sort((a, b) {
+          final ar = a.movie?.rating ?? a.series?.rating ?? 0;
+          final br = b.movie?.rating ?? b.series?.rating ?? 0;
+          return br.compareTo(ar);
+        });
+        return all.where((item) => item.image.isNotEmpty).take(20).toList();
+      }
+
+      final candidates = await Tmdb.curated(title);
+      if (candidates.isEmpty) return const <_MobileFeature>[];
+
+      final movieMap = <String, VodStream>{};
+      final seriesMap = <String, Series>{};
+      for (final item in pool.movies) {
+        final key = _titleKey(item.name);
+        if (key.isNotEmpty) movieMap.putIfAbsent(key, () => item);
+      }
+      for (final item in pool.series) {
+        final key = _titleKey(item.name);
+        if (key.isNotEmpty) seriesMap.putIfAbsent(key, () => item);
+      }
+
+      final result = <_MobileFeature>[];
+      final seen = <String>{};
+      for (final candidate in candidates) {
+        final key = _titleKey(candidate.title);
+        if (key.isEmpty || !seen.add(candidate.kind + ':' + key)) continue;
+
+        if (candidate.kind == 'movie') {
+          final movie = movieMap[key];
+          if (movie == null) continue;
+          result.add(
+            _MobileFeature.movie(
+              movie,
+              tmdbTitle: candidate.title,
+              tmdbImage: candidate.poster,
+              tmdbYear: candidate.year,
+            ),
+          );
+        } else {
+          final series = seriesMap[key];
+          if (series == null) continue;
           result.add(
             _MobileFeature.series(
-              provider,
-              tmdbTitle: tmdb.title,
-              tmdbImage: tmdb.backdrop.isNotEmpty ? tmdb.backdrop : tmdb.poster,
-              tmdbYear: tmdb.year,
+              series,
+              tmdbTitle: candidate.title,
+              tmdbImage: candidate.poster,
+              tmdbYear: candidate.year,
             ),
           );
         }
+        if (result.length == 20) break;
       }
 
-      return result.take(10).toList(growable: false);
+      // A custom shelf is allowed to be shorter than 20, but it should never
+      // vanish because a provider uses a different title spelling. Fill only
+      // with provider rows that already have artwork, preserving the "no image,
+      // no card" rule.
+      if (result.length < 20) {
+        final fallback = <_MobileFeature>[
+          ...pool.movies.map((item) => _MobileFeature.movie(item)),
+          ...pool.series.map((item) => _MobileFeature.series(item)),
+        ]..sort((a, b) {
+            final ar = a.movie?.rating ?? a.series?.rating ?? 0;
+            final br = b.movie?.rating ?? b.series?.rating ?? 0;
+            return br.compareTo(ar);
+          });
+        for (final item in fallback) {
+          if (result.length == 20) break;
+          final key = item.key;
+          if (!item.image.isNotEmpty || !seen.add(key)) continue;
+          result.add(item);
+        }
+      }
+      return result;
     } catch (_) {
       return const <_MobileFeature>[];
     }
@@ -1139,8 +1275,8 @@ class _MobileFeature {
       : 'series:' + series!.seriesId.toString();
 }
 
-class _MobilePosterShelfLoader extends StatelessWidget {
-  const _MobilePosterShelfLoader({
+class _MobileCuratedShelfLoader extends StatelessWidget {
+  const _MobileCuratedShelfLoader({
     super.key,
     required this.title,
     required this.future,
@@ -1148,248 +1284,50 @@ class _MobilePosterShelfLoader extends StatelessWidget {
   });
 
   final String title;
-  final Future<List<VodStream>>? future;
-  final ValueChanged<VodStream> onTap;
+  final Future<List<_MobileFeature>> future;
+  final ValueChanged<_MobileFeature> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (future == null) {
-      return _MobileShelfSkeleton(title: title);
-    }
-    return FutureBuilder<List<VodStream>>(
+    return FutureBuilder<List<_MobileFeature>>(
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done && !snap.hasData) {
           return _MobileShelfSkeleton(title: title);
         }
-        final items = snap.data ?? const <VodStream>[];
+        final items = (snap.data ?? const <_MobileFeature>[])
+            .where((item) => item.image.isNotEmpty)
+            .take(20)
+            .toList(growable: false);
         if (items.isEmpty) return const SizedBox.shrink();
-        return _MobilePosterShelf(
-          title: title,
-          items: items,
-          onTap: onTap,
+        return Padding(
+          padding: const EdgeInsets.only(top: 22),
+          child: _MobileShelf(
+            title: title,
+            children: [
+              for (final item in items)
+                _MobileFeaturePosterCard(
+                  key: ValueKey('curated-card-' + item.key),
+                  item: item,
+                  onTap: () => onTap(item),
+                ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _MobileSeriesShelfLoader extends StatelessWidget {
-  const _MobileSeriesShelfLoader({
+class _MobileFeaturePosterCard extends StatelessWidget {
+  const _MobileFeaturePosterCard({
     super.key,
-    required this.title,
-    required this.future,
+    required this.item,
     required this.onTap,
   });
 
-  final String title;
-  final Future<List<Series>>? future;
-  final ValueChanged<Series> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (future == null) {
-      return _MobileShelfSkeleton(title: title);
-    }
-    return FutureBuilder<List<Series>>(
-      future: future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done && !snap.hasData) {
-          return _MobileShelfSkeleton(title: title);
-        }
-        final items = snap.data ?? const <Series>[];
-        if (items.isEmpty) return const SizedBox.shrink();
-        return _MobileSeriesShelf(
-          title: title,
-          items: items,
-          onTap: onTap,
-        );
-      },
-    );
-  }
-}
-
-class _MobileShelfSkeleton extends StatelessWidget {
-  const _MobileShelfSkeleton({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 226,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: Text(
-                title,
-                style: TextStyle(
-                  color: textHi,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 194,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: 4,
-                separatorBuilder: (_, _) => const SizedBox(width: 10),
-                itemBuilder: (_, _) => Container(
-                  width: 132,
-                  height: 184,
-                  decoration: BoxDecoration(
-                    color: surfaceHi,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MobilePosterShelf extends StatelessWidget {
-  const _MobilePosterShelf({
-    required this.title,
-    required this.items,
-    required this.onTap,
-  });
-
-  final String title;
-  final List<VodStream> items;
-  final ValueChanged<VodStream> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 22),
-      child: _MobileShelf(
-        title: title,
-        children: [
-          for (final item in items.take(20))
-            _MobileTmdbPosterCard(
-              key: ValueKey('movie-card-' + item.streamId.toString()),
-              kind: 'movie',
-              rawTitle: item.name,
-              fallbackImage: item.icon,
-              onTap: () => onTap(item),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MobileSeriesShelf extends StatelessWidget {
-  const _MobileSeriesShelf({
-    required this.title,
-    required this.items,
-    required this.onTap,
-  });
-
-  final String title;
-  final List<Series> items;
-  final ValueChanged<Series> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 22),
-      child: _MobileShelf(
-        title: title,
-        children: [
-          for (final item in items.take(20))
-            _MobileTmdbPosterCard(
-              key: ValueKey('series-card-' + item.seriesId.toString()),
-              kind: 'series',
-              rawTitle: item.name,
-              fallbackImage: item.cover,
-              onTap: () => onTap(item),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MobileShelf extends StatelessWidget {
-  const _MobileShelf({required this.title, required this.children});
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 216,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: textHi,
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 194,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              cacheExtent: 396,
-              itemCount: children.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
-              itemBuilder: (_, i) => RepaintBoundary(child: children[i]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MobileTmdbPosterCard extends StatefulWidget {
-  const _MobileTmdbPosterCard({
-    super.key,
-    required this.kind,
-    required this.rawTitle,
-    required this.fallbackImage,
-    required this.onTap,
-  });
-
-  final String kind;
-  final String rawTitle;
-  final String fallbackImage;
+  final _MobileFeature item;
   final VoidCallback onTap;
-
-  @override
-  State<_MobileTmdbPosterCard> createState() => _MobileTmdbPosterCardState();
-}
-
-class _MobileTmdbPosterCardState extends State<_MobileTmdbPosterCard> {
-  late Future<TmdbInfo?> _future;
-
-  @override
-  void initState() {
-    super.initState();
-    _future = widget.kind == 'movie'
-        ? Tmdb.movie(widget.rawTitle)
-        : Tmdb.tv(widget.rawTitle);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1400,27 +1338,18 @@ class _MobileTmdbPosterCardState extends State<_MobileTmdbPosterCard> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
-          onTap: widget.onTap,
-          child: FutureBuilder<TmdbInfo?>(
-            future: _future,
-            builder: (context, snap) {
-              final info = snap.data;
-              final image = info?.poster.isNotEmpty == true
-                  ? info!.poster
-                  : widget.fallbackImage;
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: MediaImage(
-                  source: image,
-                  fit: BoxFit.cover,
-                  memCacheWidth:
-                      (132 * MediaQuery.devicePixelRatioOf(context))
-                          .round()
-                          .clamp(180, 420),
-                  error: ColoredBox(color: surfaceHi),
-                ),
-              );
-            },
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: MediaImage(
+              source: item.image,
+              fit: BoxFit.cover,
+              memCacheWidth:
+                  (132 * MediaQuery.devicePixelRatioOf(context))
+                      .round()
+                      .clamp(180, 420),
+              error: ColoredBox(color: surfaceHi),
+            ),
           ),
         ),
       ),
