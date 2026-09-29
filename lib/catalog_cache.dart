@@ -532,7 +532,7 @@ class CatalogCache {
     final results = await Future.wait(
       candidates.map(
         (category) => seriesItems(client, category.id, priority: true)
-            .timeout(const Duration(seconds: 4), onTimeout: () => <Series>[])
+            .timeout(const Duration(milliseconds: 2200), onTimeout: () => <Series>[])
             .catchError((_) => <Series>[]),
       ),
     );
@@ -574,7 +574,7 @@ class CatalogCache {
     final results = await Future.wait(
       candidates.map(
         (category) => liveStreams(client, category.id, priority: true)
-            .timeout(const Duration(seconds: 4), onTimeout: () => <LiveStream>[])
+            .timeout(const Duration(milliseconds: 2200), onTimeout: () => <LiveStream>[])
             .catchError((_) => <LiveStream>[]),
       ),
     );
