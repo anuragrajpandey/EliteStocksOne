@@ -886,6 +886,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       child: RemoteTap(
         focusNode: _dockFocusNodes[nav.page],
         semanticLabel: nav.label,
+        showFocusRing: false,
         onFocusChange: (focused) {
           if (focused && nav.page != _index) _select(nav.page, focusContent: false);
         },
