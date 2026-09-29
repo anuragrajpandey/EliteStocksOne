@@ -1219,12 +1219,12 @@ class Media3PlayerActivity : Activity() {
     private fun buildSeekFeedback(): TextView = TextView(this).apply {
         textSize = 19f
         typeface = mediumTypeface
-        setTextColor(accentColor)
+        setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         setPadding(dp(20), dp(12), dp(20), dp(12))
         background = roundedRect(
             0xE6111511.toInt(),
-            withAlpha(accentColor, 0x99),
+            0x99FFFFFF,
             1,
             24
         )
@@ -2624,7 +2624,7 @@ class Media3PlayerActivity : Activity() {
             setPadding(dp(24), dp(18), dp(24), dp(18))
             background = roundedRect(
                 0xEB111315.toInt(),
-                withAlpha(accentColor, 0x66),
+                0x66FFFFFF,
                 1,
                 18
             )
