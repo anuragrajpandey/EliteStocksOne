@@ -1255,61 +1255,6 @@ class LumenMark extends StatelessWidget {
   }
 }
 
-class _LumenMarkPainter extends CustomPainter {
-  final Color signal;
-  final Color frame;
-  _LumenMarkPainter({required this.signal, required this.frame});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final framePaint = Paint()
-      ..color = frame
-      ..isAntiAlias = true;
-    final signalPaint = Paint()
-      ..color = signal
-      ..isAntiAlias = true;
-    final w = size.width;
-    final h = size.height;
-    final r = Radius.circular(lumenCorner(w * 0.055));
-
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * .20, h * .215, w * .31, h * .79, r),
-      framePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * .20, h * .215, w * .58, h * .315, r),
-      framePaint,
-    );
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * .20, h * .69, w * .58, h * .79, r),
-      framePaint,
-    );
-
-    final tri = Path()
-      ..moveTo(w * .36, h * .37)
-      ..lineTo(w * .36, h * .64)
-      ..lineTo(w * .63, h * .505)
-      ..close();
-    canvas.drawPath(tri, signalPaint);
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * .62, h * .325, w * .785, h * .397, r),
-      signalPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * .63, h * .47, w * .865, h * .542, r),
-      signalPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromLTRBR(w * .62, h * .615, w * .785, h * .687, r),
-      signalPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_LumenMarkPainter old) =>
-      old.signal != signal || old.frame != frame;
-}
-
 /// Subtle scale-up on mouse hover (desktop affordance; no-op on touch).
 class HoverScale extends StatefulWidget {
   final Widget child;
