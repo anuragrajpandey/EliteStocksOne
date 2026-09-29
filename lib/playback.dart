@@ -671,7 +671,14 @@ class PlaybackController extends ChangeNotifier {
     _nativeSetup = configureStreamingPlayer(player!).catchError((_) {});
     _posSub = player!.stream.position.listen(_onPosition);
     _completedSub = player!.stream.completed.listen((done) {
-      if (done && !isLive && hasNext && autoAdvance) go(index + 1);
+      if (!done || isLive) return;
+      final key = current.progressKey;
+      if (key != null && key.isNotEmpty) {
+        // Completion removes the item immediately from Continue Watching,
+        // rather than waiting for the next periodic progress checkpoint.
+        Library.instance.markWatched(key);
+      }
+      if (hasNext && autoAdvance) go(index + 1);
     });
     _errorSub = player!.stream.error.listen(_onPlayerError);
     _networkSignature = NetworkPathMonitor.instance.current.signature;
