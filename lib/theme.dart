@@ -51,7 +51,7 @@ const lumenMotion = Duration(milliseconds: 190);
 /// the viewer choose how crisp or soft the entire interface feels.
 enum LumenCornerStyle {
   crisp('Crisp', 'Tighter, more precise corners', .58),
-  balanced('Balanced', 'Lumen’s default shape language', 1),
+  balanced('Balanced', 'EliteStocks One’s default shape language', 1),
   soft('Soft', 'Rounder, more relaxed surfaces', 1.42);
 
   const LumenCornerStyle(this.label, this.description, this.multiplier);
@@ -123,7 +123,7 @@ WidgetStateProperty<BorderSide?> lumenControlSide({
 /// handheld screens. The device option deliberately has no family so Flutter
 /// uses the platform's native UI font.
 enum LumenFont {
-  lumen('Lumen', 'SpaceGrotesk', 'Cinematic and compact'),
+  lumen('Cinematic', 'SpaceGrotesk', 'Cinematic and compact'),
   inter('Inter', 'Inter', 'Clean and highly readable'),
   device('Device', null, 'Use the system font');
 
