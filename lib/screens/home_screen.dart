@@ -160,6 +160,11 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    // Start the TV hero independently of the full Home catalog. The old Home
+    // future waited for both movie and series category lists, so a slow movie
+    // endpoint could keep the first-login hero blank even though series data
+    // was already available.
+    _mobileHeroFuture = _bootstrapMobileHero();
     _beginLoad();
     contentRefresh.addListener(_onRefresh);
   }
@@ -233,6 +238,48 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _push(Widget w) async {
     await pushWithFocusReturn(context, w);
   }
+
+  Future<List<_MobileFeature>> _bootstrapMobileHero() async {
+    try {
+      if (!widget.client.supportsSeriesCatalog) {
+        return const <_MobileFeature>[];
+      }
+      final categories = await CatalogCache.instance.series(
+        widget.client,
+        priority: true,
+      );
+      final sources = _selectMobileCategories(
+        _HomeData(const <Category>[], categories),
+      );
+      return _mobileHeroItems(widget.client, sources);
+    } catch (_) {
+      return const <_MobileFeature>[];
+    }
+  }
+
+  Widget _mobileHeroWidget(XtreamClient client) => _MobileHomeSpotlight(
+    future: _mobileHeroFuture,
+    onMoviePlay: (m) {
+      final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
+      PlaybackController.instance.open([
+        PlayerItem(
+          client.streamUrl('movie', m.streamId, ext: ext),
+          _clean(m.name),
+          progressKey: 'movie:' + m.streamId.toString(),
+          poster: m.icon,
+          ext: ext,
+        ),
+      ], 0);
+    },
+    onSeriesOpen: (series) => _push(
+      SeriesDetailScreen(
+        client: client,
+        seriesId: series.seriesId,
+        title: series.name,
+        preview: series,
+      ),
+    ),
+  );
 
   FocusNode _continueNode(String key) => _continueFocus.putIfAbsent(
     key,
@@ -450,6 +497,26 @@ class _HomeScreenState extends State<HomeScreen>
       initialData: _visibleData,
       builder: (context, snap) {
         if (!snap.hasData) {
+          // Paint the mobile Home immediately. The full category snapshot can
+          // still be loading in the background, while the independent series
+          // hero already has a chance to populate on first login.
+          if (!isWide(context)) {
+            return RefreshIndicator(
+              onRefresh: _pullRefresh,
+              color: accentInk,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                padding: const EdgeInsets.only(bottom: 120),
+                children: [
+                  _searchBar(),
+                  const SizedBox(height: 8),
+                  _mobileHeroWidget(widget.client),
+                ],
+              ),
+            );
+          }
           return BrandedLoading();
         }
         if (snap.hasError && _visibleData == null) {
@@ -529,31 +596,7 @@ class _HomeScreenState extends State<HomeScreen>
                 );
               }
               if (index == 1) {
-                return _MobileHomeSpotlight(
-                  future: _mobileHeroFuture,
-                  onMoviePlay: (m) {
-                    final ext = m.containerExtension.isEmpty
-                        ? 'mp4'
-                        : m.containerExtension;
-                    PlaybackController.instance.open([
-                      PlayerItem(
-                        c.streamUrl('movie', m.streamId, ext: ext),
-                        _clean(m.name),
-                        progressKey: 'movie:' + m.streamId.toString(),
-                        poster: m.icon,
-                        ext: ext,
-                      ),
-                    ], 0);
-                  },
-                  onSeriesOpen: (series) => _push(
-                    SeriesDetailScreen(
-                      client: c,
-                      seriesId: series.seriesId,
-                      title: series.name,
-                      preview: series,
-                    ),
-                  ),
-                );
+                return _mobileHeroWidget(c);
               }
               if (index == 2) {
                 return AnimatedBuilder(
