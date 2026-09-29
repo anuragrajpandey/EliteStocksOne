@@ -148,7 +148,8 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeData? _visibleData;
   int _loadGeneration = 0;
   bool _coldRetryUsed = false;
-  Timer? _dailyHomeRefreshTimer;
+  Timer? _hourlyHomeRefreshTimer;
+  Timer? _dailyShelfRefreshTimer;
   final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
@@ -171,20 +172,27 @@ class _HomeScreenState extends State<HomeScreen>
     // was already available.
     _mobileHeroFuture = _bootstrapMobileHero();
     _beginLoad();
-    // Refresh Home shelves once every 24 hours so the curated rows rotate
-    // daily without repeatedly rebuilding the full provider catalog.
-    _dailyHomeRefreshTimer = Timer.periodic(
-      const Duration(hours: 24),
+    // The large hero is intentionally refreshed every hour.
+    _hourlyHomeRefreshTimer = Timer.periodic(
+      const Duration(hours: 1),
       (_) {
         if (mounted) refreshContent();
       },
+    );
+    // The ten Home shelves use a slower playlist refresh cadence. This keeps
+    // their provider-backed categories stable during the day while allowing
+    // the playlist to rotate once every 24 hours.
+    _dailyShelfRefreshTimer = Timer.periodic(
+      const Duration(hours: 24),
+      (_) => _refreshMobileShelvesFromPlaylist(),
     );
     contentRefresh.addListener(_onRefresh);
   }
 
   @override
   void dispose() {
-    _dailyHomeRefreshTimer?.cancel();
+    _hourlyHomeRefreshTimer?.cancel();
+    _dailyShelfRefreshTimer?.cancel();
     contentRefresh.removeListener(_onRefresh);
     for (final node in [..._continueFocus.values, ..._channelFocus.values]) {
       node.dispose();
@@ -867,13 +875,29 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  void _prepareMobileShelves(_HomeData data) {
+  Future<void> _refreshMobileShelvesFromPlaylist() async {
+    if (!mounted) return;
+    try {
+      // Reload the provider category lists on the 24-hour shelf cadence. The
+      // cache layer may serve the current snapshot immediately and refresh the
+      // provider-backed data without disturbing the hourly hero.
+      final data = await _loadHome();
+      if (!mounted) return;
+      setState(() => _prepareMobileShelves(data, updateHero: false));
+    } catch (_) {
+      // Keep the last usable shelves if the provider is temporarily offline.
+    }
+  }
+
+  void _prepareMobileShelves(_HomeData data, {bool updateHero = true}) {
     final sources = _selectMobileCategories(data);
     final client = widget.client;
 
     // Each visible shelf gets a different provider category. At most ten
     // categories are loaded, with at most twenty cards displayed per shelf.
-    _mobileHeroFuture = _mobileHeroItems(client, sources);
+    if (updateHero) {
+      _mobileHeroFuture = _mobileHeroItems(client, sources);
+    }
     _mobileCuratedShelves = [
       for (var i = 0; i < _mobileCuratedShelfTitles.length; i++)
         if (i < sources.length)
