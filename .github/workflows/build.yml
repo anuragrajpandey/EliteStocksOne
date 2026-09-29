@@ -1,11 +1,8 @@
 name: Build and release Lumen
 
-# Build on every main push; the local release path remains an optional backup.
+# Manual release workflow only. Do not build automatically on commits.
 # The private Google Play bundle stays out of the public GitHub release.
 on:
-  push:
-    branches: [main, master]
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       build_number:
