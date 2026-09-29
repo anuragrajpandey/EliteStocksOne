@@ -848,7 +848,9 @@ class PlaybackController extends ChangeNotifier {
     try {
       await _nativeSetup;
       if (token != _openToken || player == null || item != target) return;
-      await player!.stop();
+      // Player.open() replaces the current Media/Playlist. Avoid an
+      // explicit stop here, especially after a user pause, so retry does not
+      // race a pause/stop native transition before reopening the same player.
       if (token != _openToken || player == null || item != target) return;
       await configurePlayerForItem(player!, target);
       if (token != _openToken || player == null || item != target) return;
