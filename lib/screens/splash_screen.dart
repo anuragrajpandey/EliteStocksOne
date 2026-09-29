@@ -75,7 +75,7 @@ class _LaunchGateState extends State<LaunchGate> {
   }
 }
 
-/// Lumen's launch film: a signal finding the screen, then resolving into the
+/// EliteStocks One's launch film: a signal finding the screen, then resolving into the
 /// product mark. Lottie drives the organic beam/ripple while Flutter keeps the
 /// typography and geometry perfectly sharp at phone, desktop, and TV sizes.
 class LaunchSplash extends StatefulWidget {
