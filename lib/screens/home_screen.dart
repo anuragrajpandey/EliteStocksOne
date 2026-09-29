@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import '../catalog_cache.dart';
 import '../device_profile.dart';
 import '../focus_return.dart';
@@ -481,12 +482,28 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
 
-        final mobileMovies = heroFuture;
-        final mobileSeries = d.seriesCats.isEmpty
-            ? Future.value(const <Series>[])
-            : CatalogCache.instance
-                  .seriesItems(c, d.seriesCats.first.id, priority: true)
-                  .then((items) => seriesRecentlyAdded(items).take(20).toList());
+        final movieCategories = d.vodCats.take(5).toList(growable: false);
+        final seriesCategories = d.seriesCats.take(5).toList(growable: false);
+
+        final movieShelfFutures = <Category, Future<List<VodStream>>>{
+          for (final category in movieCategories)
+            category: CatalogCache.instance
+                .vodStreams(c, category.id, priority: true)
+                .then((items) => moviesRecentlyAdded(items).take(20).toList())
+                .catchError((_) => <VodStream>[]),
+        };
+        final seriesShelfFutures = <Category, Future<List<Series>>>{
+          for (final category in seriesCategories)
+            category: CatalogCache.instance
+                .seriesItems(c, category.id, priority: true)
+                .then((items) => seriesRecentlyAdded(items).take(20).toList())
+                .catchError((_) => <Series>[]),
+        };
+        final mobileHeroFuture = _mobileHeroItems(
+          c,
+          movieCategories,
+          seriesCategories,
+        );
 
         return RefreshIndicator(
           onRefresh: _pullRefresh,
@@ -497,8 +514,7 @@ class _HomeScreenState extends State<HomeScreen>
               _searchBar(),
               const SizedBox(height: 8),
               _MobileHomeSpotlight(
-                movies: mobileMovies,
-                series: mobileSeries,
+                future: mobileHeroFuture,
                 onMoviePlay: (m) {
                   final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
                   PlaybackController.instance.open([
@@ -524,46 +540,100 @@ class _HomeScreenState extends State<HomeScreen>
                 animation: Library.instance,
                 builder: (_, __) => _mobileContinueWatching(),
               ),
-              FutureBuilder<List<VodStream>>(
-                future: mobileMovies,
-                builder: (_, snap) => _MobilePosterShelf(
-                  title: 'Movies',
-                  items: snap.data ?? const <VodStream>[],
-                  image: (m) => m.icon,
-                  titleOf: (m) => _clean(m.name),
-                  onTap: (m) {
-                    final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
-                    PlaybackController.instance.open([
-                      PlayerItem(
-                        c.streamUrl('movie', m.streamId, ext: ext),
-                        _clean(m.name),
-                        progressKey: 'movie:' + m.streamId.toString(),
-                        poster: m.icon,
-                        ext: ext,
-                      ),
-                    ], 0);
-                  },
-                ),
+              AnimatedBuilder(
+                animation: Library.instance,
+                builder: (_, __) => _mobileContinueLiveTv(),
               ),
-              FutureBuilder<List<Series>>(
-                future: mobileSeries,
-                builder: (_, snap) => _MobileSeriesShelf(
-                  items: snap.data ?? const <Series>[],
-                  onTap: (s) => _push(
-                    SeriesDetailScreen(
-                      client: c,
-                      seriesId: s.seriesId,
-                      title: s.name,
-                      preview: s,
+              for (final category in movieCategories)
+                FutureBuilder<List<VodStream>>(
+                  future: movieShelfFutures[category],
+                  builder: (_, snap) => _MobilePosterShelf(
+                    title: category.name.trim().isEmpty ? 'Movies' : category.name.trim(),
+                    items: snap.data ?? const <VodStream>[],
+                    image: (m) => m.icon,
+                    titleOf: (m) => _clean(m.name),
+                    onTap: (m) {
+                      final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
+                      PlaybackController.instance.open([
+                        PlayerItem(
+                          c.streamUrl('movie', m.streamId, ext: ext),
+                          _clean(m.name),
+                          progressKey: 'movie:' + m.streamId.toString(),
+                          poster: m.icon,
+                          ext: ext,
+                        ),
+                      ], 0);
+                    },
+                  ),
+                ),
+              for (final category in seriesCategories)
+                FutureBuilder<List<Series>>(
+                  future: seriesShelfFutures[category],
+                  builder: (_, snap) => _MobileSeriesShelf(
+                    title: category.name.trim().isEmpty ? 'Series' : category.name.trim(),
+                    items: snap.data ?? const <Series>[],
+                    onTap: (s) => _push(
+                      SeriesDetailScreen(
+                        client: c,
+                        seriesId: s.seriesId,
+                        title: s.name,
+                        preview: s,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         );
       },
     );
+  }
+
+  Future<List<_MobileFeature>> _mobileHeroItems(
+    XtreamClient client,
+    List<Category> movieCategories,
+    List<Category> seriesCategories,
+  ) async {
+    try {
+      final movieResults = await Future.wait([
+        for (final category in movieCategories)
+          CatalogCache.instance.vodStreams(client, category.id, priority: true).catchError((_) => <VodStream>[]),
+      ]);
+      final seriesResults = await Future.wait([
+        for (final category in seriesCategories)
+          CatalogCache.instance.seriesItems(client, category.id, priority: true).catchError((_) => <Series>[]),
+      ]);
+      final movieMap = <int, VodStream>{};
+      for (final items in movieResults) {
+        for (final item in items) {
+          if (item.icon.isNotEmpty) movieMap[item.streamId] = item;
+        }
+      }
+      final seriesMap = <int, Series>{};
+      for (final items in seriesResults) {
+        for (final item in items) {
+          if (item.cover.isNotEmpty) seriesMap[item.seriesId] = item;
+        }
+      }
+      final seed = DateTime.now().difference(DateTime(2020)).inDays;
+      final recentSeries = seriesRecentlyAdded(seriesMap.values).take(60).toList();
+      final recentMovies = moviesRecentlyAdded(movieMap.values).take(24).toList();
+      recentSeries.shuffle(math.Random(seed));
+      recentMovies.shuffle(math.Random(seed + 7919));
+      final result = <_MobileFeature>[];
+      var si = 0;
+      var mi = 0;
+      while (si < recentSeries.length || mi < recentMovies.length) {
+        for (var n = 0; n < 3 && si < recentSeries.length; n++) {
+          result.add(_MobileFeature.series(recentSeries[si++]));
+        }
+        if (mi < recentMovies.length) result.add(_MobileFeature.movie(recentMovies[mi++]));
+        if (result.length >= 24) break;
+      }
+      return result;
+    } catch (_) {
+      return const <_MobileFeature>[];
+    }
   }
 
   Widget _mobileContinueWatching() {
