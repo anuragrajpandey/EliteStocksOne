@@ -2118,7 +2118,6 @@ class _PreferenceSelector<T> extends StatefulWidget {
     required this.descriptionOf,
     required this.onSelected,
     this.previewBuilder,
-    this.leftExitFocusNode,
   });
 
   final FocusNode entryFocusNode;
