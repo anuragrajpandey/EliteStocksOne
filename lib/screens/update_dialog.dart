@@ -76,7 +76,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('A brighter Lumen is ready', style: kTitle()),
+                        Text('A brighter EliteStocks One is ready', style: kTitle()),
                         const SizedBox(height: 4),
                         Text(
                           Updater.instance.distribution ==
