@@ -1318,6 +1318,96 @@ class _MobileFeature {
       : 'series:' + series!.seriesId.toString();
 }
 
+class _MobileShelfSkeleton extends StatelessWidget {
+  const _MobileShelfSkeleton({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 238,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: textHi,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 194,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 4,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (_, _) => Container(
+                  width: 132,
+                  height: 194,
+                  decoration: BoxDecoration(
+                    color: surfaceHi,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileShelf extends StatelessWidget {
+  const _MobileShelf({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 216,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: textHi,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 194,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              cacheExtent: 396,
+              itemCount: children.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => RepaintBoundary(child: children[i]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MobileCuratedShelfLoader extends StatelessWidget {
   const _MobileCuratedShelfLoader({
     super.key,
