@@ -1003,17 +1003,46 @@ class _HomeScreenState extends State<HomeScreen>
         .toList();
     if (channels.isEmpty) return const SizedBox.shrink();
 
+    // Recently played LIVE TV uses the same wide card treatment as the
+    // reference design. Other Home shelves keep their existing poster style.
+    final width = math.min(
+      650.0,
+      math.max(280.0, MediaQuery.sizeOf(context).width - 40),
+    );
+    final height = width * (240.0 / 650.0);
+
     return Padding(
       padding: const EdgeInsets.only(top: 22),
-      child: _MobileShelf(
-        title: 'Continue LIVE TV',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final channel in channels)
-            _MobileLivePoster(
-              key: ValueKey('live-' + channel.key),
-              channel: channel,
-              onTap: () => _openRecentChannel(channel),
+          const SectionHeader(title: 'Recent channels'),
+          SizedBox(
+            height: height + 16,
+            child: HorizontalShelfViewport(
+              key: const ValueKey('home-mobile-recent-channels-viewport'),
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                itemCount: channels.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 14),
+                itemBuilder: (_, i) => _RecentChannelCard(
+                  key: ValueKey('mobile-recent-' + channels[i].key),
+                  item: channels[i],
+                  index: i,
+                  width: width,
+                  height: height,
+                  focusNode: _channelNode(channels[i].key),
+                  onTap: () => _openRecentChannel(channels[i]),
+                  onLongPress: () => _showChannelActions(channels[i]),
+                ),
+              ),
             ),
+          ),
         ],
       ),
     );
