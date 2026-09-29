@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 const privacyPolicyUrl = '';
-const supportEmail = 'talhaashraf81@gmail.com';
+const supportEmail = 'elitestockstv@gmail.com';
 const communityUrl = '';
 
 class LegalAcceptance {
