@@ -529,6 +529,7 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
+    final categories = await series(client, priority: true);
     final normalized = query.trim().toLowerCase();
     final candidates = categories.take(12).toList(growable: false);
     final matches = <int, Series>{};
@@ -578,6 +579,7 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
+    final categories = await live(client, priority: true);
     final normalized = query.trim().toLowerCase();
     final candidates = categories.take(12).toList(growable: false);
     final matches = <int, LiveStream>{};
