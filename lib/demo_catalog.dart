@@ -56,7 +56,7 @@ class DemoCatalog {
   ];
 
   static List<Category> get liveCategories => [
-    Category('demo_live', 'Lumen Live'),
+    Category('demo_live', 'EliteStocks One Live'),
     Category('demo_culture', 'Culture'),
     Category('demo_nature', 'Nature'),
   ];
@@ -178,8 +178,8 @@ class DemoCatalog {
     };
     return VodInfo(
       plot: details.$1,
-      cast: 'Original Lumen demo cast',
-      director: 'Lumen Studio',
+      cast: 'Original EliteStocks One demo cast',
+      director: 'EliteStocks One Studio',
       genre: details.$2,
       releaseDate: movie.added,
       rating: movie.rating,
@@ -292,7 +292,7 @@ class DemoCatalog {
   }
 
   static final List<LiveStream> _channels = [
-    LiveStream(9401, 'Lumen One', aerial, 'demo_live'),
+    LiveStream(9401, 'EliteStocks One', aerial, 'demo_live'),
     LiveStream(9402, 'Horizon News', meridian, 'demo_live'),
     LiveStream(9403, 'Cinema Vault', harbor, 'demo_culture'),
     LiveStream(9404, 'Wild Earth', afterlight, 'demo_nature'),
