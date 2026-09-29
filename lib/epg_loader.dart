@@ -88,7 +88,7 @@ class EpgXmltvLoader {
         'The guide provider took too long to respond.',
       );
     } catch (_) {
-      throw const EpgSyncException('Lumen could not reach the guide provider.');
+      throw const EpgSyncException('EliteStocks One could not reach the guide provider.');
     }
 
     final fetchedAt = (now ?? DateTime.now()).toUtc();
@@ -115,7 +115,7 @@ class EpgXmltvLoader {
 
     final contentLength = response.contentLength;
     if (contentLength != null && contentLength > _parser.maxDecompressedBytes) {
-      throw const EpgSyncException('The guide exceeds Lumen’s safety limit.');
+      throw const EpgSyncException('The guide exceeds EliteStocks One’s safety limit.');
     }
 
     final generation = DateTime.now().microsecondsSinceEpoch;
