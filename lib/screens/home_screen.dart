@@ -765,7 +765,7 @@ class _HomeScreenState extends State<HomeScreen>
           _MobileFeature.series(
             provider,
             tmdbTitle: tmdb.title,
-            tmdbImage: tmdb.backdrop.isNotEmpty ? tmdb.backdrop : tmdb.poster,
+            tmdbImage: tmdb.poster.isNotEmpty ? tmdb.poster : tmdb.backdrop,
             tmdbYear: tmdb.year,
           ),
         );
