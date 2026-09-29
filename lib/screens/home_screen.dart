@@ -435,9 +435,10 @@ class _HomeScreenState extends State<HomeScreen>
     }
     final cardWidth = DeviceProfile.isTelevision ? 310.0 : 260.0;
     final cardHeight = DeviceProfile.isTelevision ? 112.0 : 96.0;
+    final historyAvailableWidth = MediaQuery.sizeOf(context).width - 40;
     final channelWidth = math.min(
       650.0,
-      math.max(280.0, MediaQuery.sizeOf(context).width - 40),
+      math.max(150.0, (historyAvailableWidth - 14.0) / 2.0),
     );
     final channelHeight = channelWidth * (240.0 / 650.0);
     return Column(
@@ -1005,9 +1006,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     // Recently played LIVE TV uses the same wide card treatment as the
     // reference design. Other Home shelves keep their existing poster style.
+    final availableWidth = MediaQuery.sizeOf(context).width - 40;
     final width = math.min(
       650.0,
-      math.max(280.0, MediaQuery.sizeOf(context).width - 40),
+      math.max(150.0, (availableWidth - 14.0) / 2.0),
     );
     final height = width * (240.0 / 650.0);
 
@@ -1129,12 +1131,30 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
     }
   }
 
+  bool _isVisibleOnScreen() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final rect = topLeft & renderObject.size;
+    final viewport = MediaQuery.sizeOf(context);
+    return rect.bottom > 0 &&
+        rect.top < viewport.height &&
+        rect.right > 0 &&
+        rect.left < viewport.width;
+  }
+
   void _startTimer() {
     _timer?.cancel();
     if (_items.length < 2) return;
     _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || !_pageController.hasClients || _items.length < 2) return;
+      if (!mounted ||
+          !_pageController.hasClients ||
+          !_isVisibleOnScreen() ||
+          _items.length < 2) {
+        return;
+      }
       final currentPage = _pageController.page?.round() ?? _loopCenterPage;
+      if (_pageController.position.isScrollingNotifier.value) return;
       _pageController.animateToPage(
         currentPage + 1,
         duration: const Duration(milliseconds: 520),
@@ -1866,10 +1886,28 @@ class _SpotlightHeroState extends State<_SpotlightHero> {
     return KeyEventResult.handled;
   }
 
+  bool _isVisibleOnScreen() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
+    final topLeft = renderObject.localToGlobal(Offset.zero);
+    final rect = topLeft & renderObject.size;
+    final viewport = MediaQuery.sizeOf(context);
+    return rect.bottom > 0 &&
+        rect.top < viewport.height &&
+        rect.right > 0 &&
+        rect.left < viewport.width;
+  }
+
   void _advance() {
     // IndexedStack preserves Home while another tab is open. TickerMode is
-    // disabled there, so do not rotate artwork or fetch metadata off-screen.
-    if (!TickerMode.of(context) || _items.length < 2) return;
+    // disabled there, and vertical Home scrolling can move the hero completely
+    // off-screen. In both cases the carousel must stay parked rather than
+    // advancing while the user is looking elsewhere.
+    if (!TickerMode.of(context) ||
+        !_isVisibleOnScreen() ||
+        _items.length < 2) {
+      return;
+    }
     _select((_index + 1) % _items.length);
   }
 
