@@ -429,7 +429,7 @@ class _HomeScreenState extends State<HomeScreen>
         final primarySource = heroCat == null
             ? Future.value(const <VodStream>[])
             : CatalogCache.instance
-                  .vodStreams(c, heroCat)
+                  .vodStreams(c, heroCat, priority: true)
                   .catchError((_) => <VodStream>[]);
         final heroFuture = primarySource.then((items) {
           final ranked = moviesRecentlyAdded(
@@ -877,7 +877,9 @@ class _MobilePosterCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
+            SizedBox(
+              width: 150,
+              height: 150,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: MediaImage(
