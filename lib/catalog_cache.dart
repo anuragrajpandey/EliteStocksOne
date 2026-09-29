@@ -482,11 +482,19 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
-    final categories = await vod(client, priority: true);
+    final categories = await vod(client, priority: true)
+        .timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => <Category>[],
+        )
+        .catchError((_) => <Category>[]);
     final normalized = query.trim().toLowerCase();
     final matches = <int, VodStream>{};
-    const batchSize = 6;
-    for (var start = 0; start < categories.length; start += batchSize) {
+    const candidateLimit = 8;
+    const batchSize = 2;
+    for (var start = 0;
+        start < categories.length && start < candidateLimit;
+        start += batchSize) {
       final batch = categories.skip(start).take(batchSize);
       final results = await Future.wait(
         batch.map(
@@ -495,7 +503,7 @@ class CatalogCache {
             category.id,
             priority: true,
           ).timeout(
-            const Duration(milliseconds: 2200),
+            const Duration(milliseconds: 1200),
             onTimeout: () => <VodStream>[],
           ).catchError((_) => <VodStream>[]),
         ),
@@ -529,11 +537,16 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
-    final categories = await series(client, priority: true);
+    final categories = await series(client, priority: true)
+        .timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => <Category>[],
+        )
+        .catchError((_) => <Category>[]);
     final normalized = query.trim().toLowerCase();
-    final candidates = categories.take(12).toList(growable: false);
+    final candidates = categories.take(8).toList(growable: false);
     final matches = <int, Series>{};
-    const batchSize = 6;
+    const batchSize = 2;
     for (var start = 0; start < candidates.length; start += batchSize) {
       final batch = candidates.skip(start).take(batchSize);
       final results = await Future.wait(
@@ -579,11 +592,16 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
-    final categories = await live(client, priority: true);
+    final categories = await live(client, priority: true)
+        .timeout(
+          const Duration(seconds: 2),
+          onTimeout: () => <Category>[],
+        )
+        .catchError((_) => <Category>[]);
     final normalized = query.trim().toLowerCase();
-    final candidates = categories.take(12).toList(growable: false);
+    final candidates = categories.take(8).toList(growable: false);
     final matches = <int, LiveStream>{};
-    const batchSize = 6;
+    const batchSize = 2;
     for (var start = 0; start < candidates.length; start += batchSize) {
       final batch = candidates.skip(start).take(batchSize);
       final results = await Future.wait(
