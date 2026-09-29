@@ -34,7 +34,7 @@ class Tmdb {
         '?api_key=$_key'
         '&language=en-IN'
         '&watch_region=IN'
-        '&with_watch_monetization_types=flatrate|free|ads|rent|buy'
+        '&with_watch_monetization_types=flatrate%7Cfree%7Cads%7Crent%7Cbuy'
         '&sort_by=popularity.desc'
         '&include_adult=false'
         '&page=1',
