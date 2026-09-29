@@ -1967,7 +1967,6 @@ class _FontSelector extends StatefulWidget {
   final FocusNode entryFocusNode;
   final FocusNode upFocusNode;
   final FocusNode downFocusNode;
-  final FocusNode? leftExitFocusNode;
 
   @override
   State<_FontSelector> createState() => _FontSelectorState();
