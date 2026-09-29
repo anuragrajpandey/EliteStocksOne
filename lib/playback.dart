@@ -571,6 +571,7 @@ class PlaybackController extends ChangeNotifier {
   int _openToken = 0;
   Future<void>? _nativeSetup;
   Future<void>? _openInFlight;
+  Future<void>? _playInFlight;
   List<String> _sourceCandidates = const [];
   int _sourceIndex = 0;
   Duration? _resumeAfterRecovery;
@@ -855,6 +856,15 @@ class PlaybackController extends ChangeNotifier {
       await configurePlayerForItem(player!, target);
       if (token != _openToken || player == null || item != target) return;
       await player!.open(mediaForPlayerItem(target, sourceUrl: source));
+      // Player.open() starts media by default. If the user pressed Pause while
+      // the item was still opening, immediately put the newly opened media back
+      // into the paused state instead of racing a later play/pause transition.
+      if (!_wantsPlayback &&
+          token == _openToken &&
+          player != null &&
+          item == target) {
+        await player!.pause();
+      }
     } catch (error) {
       if (token != _openToken || player == null || item != target) return;
       _setFailure(classifyPlaybackFailure('$error'));
@@ -1260,16 +1270,33 @@ class PlaybackController extends ChangeNotifier {
   }
 
   void play() {
-    if (player == null) return;
+    if (player == null || _playInFlight != null) return;
     _wantsPlayback = true;
     _openedAtMs = DateTime.now().millisecondsSinceEpoch;
     _lastProgressMs = _openedAtMs;
+    final future = _playAfterOpen();
+    _playInFlight = future;
     unawaited(
-      player!.play().catchError((error) {
-        _setFailure(classifyPlaybackFailure('$error'));
-        notifyListeners();
+      future.whenComplete(() {
+        if (identical(_playInFlight, future)) _playInFlight = null;
       }),
     );
+  }
+
+  Future<void> _playAfterOpen() async {
+    final opening = _openInFlight;
+    if (opening != null) {
+      try {
+        await opening;
+      } catch (_) {}
+    }
+    if (!_wantsPlayback || player == null) return;
+    try {
+      await player!.play();
+    } catch (error) {
+      _setFailure(classifyPlaybackFailure('$error'));
+      notifyListeners();
+    }
   }
 
   void pause() {
