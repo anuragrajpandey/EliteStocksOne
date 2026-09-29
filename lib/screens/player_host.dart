@@ -222,6 +222,7 @@ class _PlayerHostState extends State<PlayerHost> {
   bool _controls = true;
   bool _fullscreen = false;
   bool _muted = false;
+  bool _controlsLocked = false;
   Timer? _hideTimer;
   BoxFit _fit = BoxFit.contain;
   double _rate = 1.0;
@@ -941,6 +942,7 @@ class _PlayerHostState extends State<PlayerHost> {
 
   void _resetForItem() {
     _controls = true;
+    _controlsLocked = false;
     _zoomScale = 1.0;
     _fit = BoxFit.contain;
     _rate = 1.0;
@@ -1048,8 +1050,24 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   void _tap() {
+    if (_controlsLocked) return;
     setState(() => _controls = !_controls);
     if (_controls) _scheduleHide();
+  }
+
+  void _toggleControlsLock() {
+    if (DeviceProfile.isTelevision || _isDesktop) return;
+    setState(() {
+      _controlsLocked = !_controlsLocked;
+      _controls = !_controlsLocked;
+    });
+    if (_controlsLocked) {
+      _hideTimer?.cancel();
+      _flashHud('Controls locked', Icons.lock_rounded);
+    } else {
+      _scheduleHide();
+      _flashHud('Controls unlocked', Icons.lock_open_rounded);
+    }
   }
 
   void _seekBy(int secs) {
@@ -1249,26 +1267,35 @@ class _PlayerHostState extends State<PlayerHost> {
         onHover: _onHover,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: _tap,
-          onDoubleTapDown: (d) => _doubleTapX = d.localPosition.dx,
-          onDoubleTap: _onDoubleTap,
-          onLongPressStart: _isLive ? null : (_) => _holdSpeedStart(),
-          onLongPressEnd: _isLive ? null : (_) => _holdSpeedEnd(),
-          onScaleStart: _onScaleStart,
-          onScaleUpdate: _onScaleUpdate,
-          onScaleEnd: _onScaleEnd,
+          onTap: _controlsLocked ? null : _tap,
+          onDoubleTapDown: _controlsLocked
+              ? null
+              : (d) => _doubleTapX = d.localPosition.dx,
+          onDoubleTap: _controlsLocked ? null : _onDoubleTap,
+          onLongPressStart: _controlsLocked || _isLive
+              ? null
+              : (_) => _holdSpeedStart(),
+          onLongPressEnd: _controlsLocked || _isLive
+              ? null
+              : (_) => _holdSpeedEnd(),
+          onScaleStart: _controlsLocked ? null : _onScaleStart,
+          onScaleUpdate: _controlsLocked ? null : _onScaleUpdate,
+          onScaleEnd: _controlsLocked ? null : _onScaleEnd,
           child: Stack(
             fit: StackFit.expand,
             children: [
               _hudOverlay(),
-              AnimatedOpacity(
-                opacity: _controls ? 1 : 0,
-                duration: const Duration(milliseconds: 220),
-                child: ExcludeFocus(
-                  excluding: !_controls,
-                  child: IgnorePointer(ignoring: !_controls, child: _overlay()),
+              if (_controlsLocked && !DeviceProfile.isTelevision && !_isDesktop)
+                _lockedControlsButton()
+              else
+                AnimatedOpacity(
+                  opacity: _controls ? 1 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  child: ExcludeFocus(
+                    excluding: !_controls,
+                    child: IgnorePointer(ignoring: !_controls, child: _overlay()),
+                  ),
                 ),
-              ),
               // Connecting, reconnecting, and ordinary buffering share one
               // status lane. Only one transient message can be visible.
               _playbackStatusPill(),
@@ -1647,6 +1674,7 @@ class _PlayerHostState extends State<PlayerHost> {
 
   // ---- gestures ----
   void _onDoubleTap() {
+    if (_controlsLocked) return;
     final w = MediaQuery.of(context).size.width;
     if (_zoomScale > 1.05) {
       setState(() => _zoomScale = 1.0);
@@ -1666,6 +1694,7 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   void _onScaleStart(ScaleStartDetails d) {
+    if (_controlsLocked) return;
     _gMode = null;
     _gAccum = 0;
     _zoomStart = _zoomScale;
@@ -1674,6 +1703,7 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   void _onScaleUpdate(ScaleUpdateDetails d) {
+    if (_controlsLocked) return;
     if (d.pointerCount >= 2) {
       setState(() => _zoomScale = (_zoomStart * d.scale).clamp(1.0, 4.0));
       return;
@@ -1724,6 +1754,7 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   void _onScaleEnd(ScaleEndDetails d) {
+    if (_controlsLocked) return;
     if (_gMode == 'seek') pc.player!.seek(_gSeekTarget);
     _gMode = null;
     _hideHud();
@@ -2549,6 +2580,13 @@ class _PlayerHostState extends State<PlayerHost> {
                       _toggleMute,
                       compact: compact,
                     ),
+                    if (!DeviceProfile.isTelevision && !_isDesktop)
+                      _bottomIcon(
+                        Icons.lock_outline_rounded,
+                        _toggleControlsLock,
+                        tooltip: 'Lock controls',
+                        compact: compact,
+                      ),
                     _bottomIcon(
                       Icons.closed_caption_rounded,
                       _pickSubtitles,
@@ -2617,6 +2655,28 @@ class _PlayerHostState extends State<PlayerHost> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _lockedControlsButton() {
+    return Positioned(
+      left: 12,
+      bottom: 12,
+      child: SafeArea(
+        top: false,
+        child: IconButton(
+          tooltip: 'Unlock controls',
+          onPressed: _toggleControlsLock,
+          padding: const EdgeInsets.all(10),
+          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.black.withValues(alpha: 0.62),
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.white24),
+          ),
+          icon: const Icon(Icons.lock_rounded, size: 24),
         ),
       ),
     );
