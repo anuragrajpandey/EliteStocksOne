@@ -571,6 +571,414 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
+
+class _MobileHomeSpotlight extends StatefulWidget {
+  const _MobileHomeSpotlight({
+    required this.movies,
+    required this.series,
+    required this.onMoviePlay,
+    required this.onSeriesOpen,
+  });
+  final Future<List<VodStream>> movies;
+  final Future<List<Series>> series;
+  final ValueChanged<VodStream> onMoviePlay;
+  final ValueChanged<Series> onSeriesOpen;
+  @override
+  State<_MobileHomeSpotlight> createState() => _MobileHomeSpotlightState();
+}
+
+class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
+  List<_MobileFeature> _items = const [];
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final result = await Future.wait([widget.movies, widget.series]);
+      final movies = result[0] as List<VodStream>;
+      final series = result[1] as List<Series>;
+      if (!mounted) return;
+      final items = <_MobileFeature>[
+        ...movies.take(6).map(_MobileFeature.movie),
+        ...series.take(6).map(_MobileFeature.series),
+      ];
+      setState(() {
+        _items = items;
+        _index = 0;
+      });
+      if (items.length > 1) {
+        _timer?.cancel();
+        _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+          if (!mounted) return;
+          setState(() => _index = (_index + 1) % _items.length);
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _items = const []);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _activate(_MobileFeature item) {
+    if (item.movie != null) {
+      widget.onMoviePlay(item.movie!);
+    } else if (item.series != null) {
+      widget.onSeriesOpen(item.series!);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_items.isEmpty) {
+      return const SizedBox(
+        height: 285,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    final item = _items[_index];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 330,
+            width: double.infinity,
+            child: Material(
+              color: surface,
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _activate(item),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    MediaImage(
+                      key: ValueKey(item.image),
+                      source: item.image,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      memCacheWidth: (MediaQuery.sizeOf(context).width *
+                              MediaQuery.devicePixelRatioOf(context))
+                          .round()
+                          .clamp(360, 900),
+                      error: ColoredBox(color: surfaceHi),
+                    ),
+                    const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Color(0x14000000), Color(0xB8000000)],
+                          stops: [0.42, 1],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 16,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _clean(item.title),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 23,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            padding: const EdgeInsets.all(11),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: .94),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              item.movie != null
+                                  ? Icons.play_arrow_rounded
+                                  : Icons.arrow_forward_rounded,
+                              color: Colors.black,
+                              size: 22,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 9),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              _items.length.clamp(0, 6),
+              (i) => AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: i == _index ? 16 : 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: i == _index ? accent : muted.withValues(alpha: .55),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileFeature {
+  const _MobileFeature.movie(this.movie) : series = null;
+  const _MobileFeature.series(this.series) : movie = null;
+  final VodStream? movie;
+  final Series? series;
+  String get title => movie?.name ?? series?.name ?? '';
+  String get image => movie?.icon ?? series?.cover ?? '';
+}
+
+class _MobilePosterShelf extends StatelessWidget {
+  const _MobilePosterShelf({
+    required this.title,
+    required this.items,
+    required this.image,
+    required this.titleOf,
+    required this.onTap,
+  });
+  final String title;
+  final List<VodStream> items;
+  final String Function(VodStream) image;
+  final String Function(VodStream) titleOf;
+  final ValueChanged<VodStream> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: _MobileShelf(
+        title: title,
+        children: [
+          for (final item in items.take(20))
+            _MobilePosterCard(
+              key: ValueKey('movie-card-' + item.streamId.toString()),
+              image: image(item),
+              title: titleOf(item),
+              onTap: () => onTap(item),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileSeriesShelf extends StatelessWidget {
+  const _MobileSeriesShelf({required this.items, required this.onTap});
+  final List<Series> items;
+  final ValueChanged<Series> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: _MobileShelf(
+        title: 'Series',
+        children: [
+          for (final item in items.take(20))
+            _MobilePosterCard(
+              key: ValueKey('series-card-' + item.seriesId.toString()),
+              image: item.cover,
+              title: _clean(item.name),
+              onTap: () => onTap(item),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileShelf extends StatelessWidget {
+  const _MobileShelf({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: textHi,
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 174,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: children.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => RepaintBoundary(child: children[i]),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MobilePosterCard extends StatelessWidget {
+  const _MobilePosterCard({
+    super.key,
+    required this.image,
+    required this.title,
+    required this.onTap,
+  });
+  final String image;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 150,
+      height: 174,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: MediaImage(
+                  source: image,
+                  fit: BoxFit.cover,
+                  memCacheWidth:
+                      (150 * MediaQuery.devicePixelRatioOf(context))
+                          .round()
+                          .clamp(180, 420),
+                  error: ColoredBox(color: surfaceHi),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textHi,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileContinuePoster extends StatelessWidget {
+  const _MobileContinuePoster({required this.progress, required this.onTap});
+  final Progress progress;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 150,
+      height: 156,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              MediaImage(
+                source: progress.poster,
+                fit: BoxFit.cover,
+                memCacheWidth:
+                    (150 * MediaQuery.devicePixelRatioOf(context))
+                        .round()
+                        .clamp(180, 420),
+                error: ColoredBox(color: surfaceHi),
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Color(0xCC000000)],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: Text(
+                  progress.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 3,
+                child: LinearProgressIndicator(
+                  value: progress.fraction,
+                  color: accent,
+                  backgroundColor: Colors.white24,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeData {
   final List<Category> vodCats;
   final List<Category> seriesCats;
