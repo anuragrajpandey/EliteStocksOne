@@ -528,7 +528,7 @@ class CatalogCache {
   }) async {
     final categories = await series(client, priority: true);
     final normalized = query.trim().toLowerCase();
-    final candidates = categories.take(24).toList(growable: false);
+    final candidates = categories.take(12).toList(growable: false);
     final results = await Future.wait(
       candidates.map(
         (category) => seriesItems(client, category.id, priority: true)
