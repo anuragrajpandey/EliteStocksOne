@@ -1096,7 +1096,6 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
   final PageController _pageController = PageController(
     initialPage: _loopCenterPage,
   );
-  Timer? _timer;
   List<_MobileFeature> _items = const [];
   int _index = 0;
 
@@ -1110,7 +1109,6 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
   void didUpdateWidget(covariant _MobileHomeSpotlight oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.future != widget.future) {
-      _timer?.cancel();
       _items = const [];
       _index = 0;
       _load();
@@ -1128,57 +1126,12 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
       if (_pageController.hasClients) {
         _pageController.jumpToPage(_loopCenterPage);
       }
-      _startTimer();
+
     } catch (_) {
       if (mounted) setState(() => _items = const []);
     }
   }
 
-  bool _isVisibleOnScreen() {
-    final renderObject = context.findRenderObject();
-    if (renderObject is! RenderBox || !renderObject.hasSize) return false;
-    final topLeft = renderObject.localToGlobal(Offset.zero);
-    final rect = topLeft & renderObject.size;
-    final viewport = MediaQuery.sizeOf(context);
-    return rect.bottom > 0 &&
-        rect.top < viewport.height &&
-        rect.right > 0 &&
-        rect.left < viewport.width;
-  }
-
-  void _startTimer() {
-    _timer?.cancel();
-    if (_items.length < 2) return;
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted ||
-          !_pageController.hasClients ||
-          !_isVisibleOnScreen() ||
-          _items.length < 2) {
-        return;
-      }
-      // Do not let the spotlight advance while the user is vertically
-      // scrolling Home. The horizontal hero carousel should only move when
-      // the page is idle, otherwise it feels like the whole Home is moving.
-      final parentScrollable = Scrollable.maybeOf(context);
-      if (parentScrollable?.position.isScrollingNotifier.value ?? false) {
-        return;
-      }
-      final currentPage = _pageController.page?.round() ?? _loopCenterPage;
-      if (_pageController.position.isScrollingNotifier.value) return;
-      _pageController.animateToPage(
-        currentPage + 1,
-        duration: const Duration(milliseconds: 520),
-        curve: Curves.easeOutCubic,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
 
   void _activate(_MobileFeature item) {
     if (item.movie != null) {
@@ -1239,7 +1192,6 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
                 onPageChanged: (page) {
                   if (!mounted || _items.isEmpty) return;
                   setState(() => _index = page % _items.length);
-                  _startTimer();
                 },
                 itemCount: 100000,
                 itemBuilder: (_, index) {
