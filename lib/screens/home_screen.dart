@@ -1408,20 +1408,16 @@ class _MobileTmdbPosterCardState extends State<_MobileTmdbPosterCard> {
               final image = info?.poster.isNotEmpty == true
                   ? info!.poster
                   : widget.fallbackImage;
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: ClipRRect(
-                  key: ValueKey(image),
-                  borderRadius: BorderRadius.circular(14),
-                  child: MediaImage(
-                    source: image,
-                    fit: BoxFit.cover,
-                    memCacheWidth:
-                        (132 * MediaQuery.devicePixelRatioOf(context))
-                            .round()
-                            .clamp(180, 420),
-                    error: ColoredBox(color: surfaceHi),
-                  ),
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: MediaImage(
+                  source: image,
+                  fit: BoxFit.cover,
+                  memCacheWidth:
+                      (132 * MediaQuery.devicePixelRatioOf(context))
+                          .round()
+                          .clamp(180, 420),
+                  error: ColoredBox(color: surfaceHi),
                 ),
               );
             },
@@ -1542,21 +1538,6 @@ class _MobileContinuePoster extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [Colors.transparent, Color(0xCC000000)],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 8,
-                right: 8,
-                bottom: 8,
-                child: Text(
-                  progress.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
