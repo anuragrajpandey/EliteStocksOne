@@ -144,7 +144,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   );
   final Map<int, Widget> _pageCache = <int, Widget>{};
   bool _exitDialogOpen = false;
-  bool _mobilePageAnimating = false;
 
   // Phones and larger screens share the same page map. Guide remains a
   // television/desktop destination; the phone dock promotes only the three
@@ -595,16 +594,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _navigationHistory.add(_index);
       }
     }
-    setState(() {
-      _index = i;
-      _mobilePageAnimating = DeviceProfile.isMobileApp;
-    });
-    if (DeviceProfile.isMobileApp) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() => _mobilePageAnimating = false);
-      });
-    }
+    // Keep mobile page switching synchronous. A temporary opacity layer here
+    // could leave an IndexedStack destination visually present but untouchable
+    // when returning from a utility page and opening the utility hub again.
+    setState(() => _index = i);
     if (!focusContent) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _dockFocusNodes[i]?.requestFocus();
@@ -764,12 +757,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       children: [
         SafeArea(
           bottom: false,
-          child: AnimatedOpacity(
-            opacity: _mobilePageAnimating ? 0.0 : 1.0,
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            child: IndexedStack(index: mobileIndex, children: pages),
-          ),
+          child: IndexedStack(index: mobileIndex, children: pages),
         ),
         if (_index == 0)
           Positioned(
@@ -870,16 +858,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Future<void> _openMobileUtilityHub() async {
-    final destination = await showModalBottomSheet<int>(
+    await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
       isScrollControlled: false,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.58),
-      builder: (_) => _MobileUtilityHub(client: widget.client),
+      builder: (sheetContext) => _MobileUtilityHub(
+        client: widget.client,
+        onDestination: (page) {
+          Navigator.of(sheetContext).pop();
+          // Let the sheet finish its route transition before switching the
+          // IndexedStack. This keeps the second visit just as interactive as
+          // the first one.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _select(page);
+          });
+        },
+      ),
     );
-    if (!mounted || destination == null) return;
-    _select(destination);
   }
 
   Widget _item(_Nav nav) {
@@ -932,9 +929,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 }
 
 class _MobileUtilityHub extends StatelessWidget {
-  const _MobileUtilityHub({required this.client});
+  const _MobileUtilityHub({
+    required this.client,
+    required this.onDestination,
+  });
 
   final XtreamClient client;
+  final ValueChanged<int> onDestination;
 
   @override
   Widget build(BuildContext context) {
@@ -1031,7 +1032,7 @@ class _MobileUtilityHub extends StatelessWidget {
                     label: 'My List',
                     subtitle: 'Saved titles',
                     autofocus: true,
-                    onTap: () => Navigator.pop(context, 2),
+                    onTap: () => onDestination(2),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1040,7 +1041,7 @@ class _MobileUtilityHub extends StatelessWidget {
                     icon: Icons.download_rounded,
                     label: 'Downloads',
                     subtitle: 'Watch offline',
-                    onTap: () => Navigator.pop(context, 7),
+                    onTap: () => onDestination(7),
                   ),
                 ),
               ],
@@ -1050,7 +1051,7 @@ class _MobileUtilityHub extends StatelessWidget {
               icon: Icons.person_outline_rounded,
               label: 'Profile & settings',
               subtitle: 'Account, appearance, privacy and app controls',
-              onTap: () => Navigator.pop(context, 3),
+              onTap: () => onDestination(3),
               horizontal: true,
             ),
           ],
