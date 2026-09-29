@@ -85,7 +85,7 @@ class DownloadTransferService : Service() {
         running = this
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Lumen downloads", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL_ID, "EliteStocks One downloads", NotificationManager.IMPORTANCE_LOW)
         )
     }
 
@@ -332,7 +332,7 @@ class DownloadTransferService : Service() {
         } ?: 0
         val notification = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Lumen download")
+            .setContentTitle("EliteStocks One download")
             .setContentText(task?.title ?: "Preparing download")
             .setContentIntent(pending)
             .setOnlyAlertOnce(true)
