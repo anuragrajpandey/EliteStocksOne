@@ -144,6 +144,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   );
   final Map<int, Widget> _pageCache = <int, Widget>{};
   bool _exitDialogOpen = false;
+  bool _mobilePageAnimating = false;
 
   // Phones and larger screens share the same page map. Guide remains a
   // television/desktop destination; the phone dock promotes only the three
@@ -594,7 +595,16 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         _navigationHistory.add(_index);
       }
     }
-    setState(() => _index = i);
+    setState(() {
+      _index = i;
+      _mobilePageAnimating = DeviceProfile.isMobileApp;
+    });
+    if (DeviceProfile.isMobileApp) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _mobilePageAnimating = false);
+      });
+    }
     if (!focusContent) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _dockFocusNodes[i]?.requestFocus();
@@ -754,7 +764,12 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       children: [
         SafeArea(
           bottom: false,
-          child: IndexedStack(index: mobileIndex, children: pages),
+          child: AnimatedOpacity(
+            opacity: _mobilePageAnimating ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            child: IndexedStack(index: mobileIndex, children: pages),
+          ),
         ),
         if (_index == 0)
           Positioned(
@@ -1064,30 +1079,35 @@ class _MobileUtilityDestination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RemoteTap(
-      autofocus: autofocus,
-      onTap: onTap,
-      child: Container(
-        height: horizontal ? 68 : 92,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: surfaceHi,
-          borderRadius: BorderRadius.circular(lumenCorner(18)),
-          border: Border.all(color: line),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(lumenCorner(18)),
+        onTap: onTap,
+        splashColor: accentInk.withValues(alpha: .10),
+        highlightColor: accentInk.withValues(alpha: .06),
+        child: Container(
+          height: horizontal ? 68 : 92,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: surfaceHi,
+            borderRadius: BorderRadius.circular(lumenCorner(18)),
+            border: Border.all(color: line),
+          ),
+          child: horizontal
+              ? Row(
+                  children: [
+                    _icon(),
+                    const SizedBox(width: 12),
+                    Expanded(child: _copy()),
+                    Icon(Icons.chevron_right_rounded, color: muted),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [_icon(), const Spacer(), _copy()],
+                ),
         ),
-        child: horizontal
-            ? Row(
-                children: [
-                  _icon(),
-                  const SizedBox(width: 12),
-                  Expanded(child: _copy()),
-                  Icon(Icons.chevron_right_rounded, color: muted),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [_icon(), const Spacer(), _copy()],
-              ),
       ),
     );
   }
