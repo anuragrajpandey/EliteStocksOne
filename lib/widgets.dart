@@ -997,14 +997,11 @@ class _FocusableTapState extends State<FocusableTap> {
             curve: Curves.easeOut,
             child: AnimatedContainer(
               duration: lumenMotionFast,
+              transformAlignment: Alignment.center,
               foregroundDecoration: widget.showFocusRing && _focus
                   ? BoxDecoration(
                       borderRadius: BorderRadius.circular(
                         lumenCorner(widget.focusRadius),
-                      ),
-                      border: Border.all(
-                        color: accentInk,
-                        width: focusStyle.ringWidth,
                       ),
                       boxShadow: lumenFocusShadows(accent),
                     )
@@ -1189,14 +1186,11 @@ class _RemoteTapState extends State<RemoteTap> {
           curve: Curves.easeOut,
           child: AnimatedContainer(
             duration: lumenMotionFast,
+            transformAlignment: Alignment.center,
             foregroundDecoration: widget.showFocusRing && _focused
                 ? BoxDecoration(
                     borderRadius: BorderRadius.circular(
                       lumenCorner(widget.focusRadius),
-                    ),
-                    border: Border.all(
-                      color: focusColor,
-                      width: focusStyle.ringWidth,
                     ),
                     boxShadow: lumenFocusShadows(focusColor),
                   )
