@@ -181,7 +181,7 @@ class _LaunchSplashState extends State<LaunchSplash>
                                           semanticLabel: 'EliteStocks TV icon',
                                         ),
                                       ),
-                                    ]
+                                    ],
                                   ),
                                 ),
                               ),
