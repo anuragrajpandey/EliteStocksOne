@@ -1638,32 +1638,6 @@ class _MobileFeaturePosterCard extends StatelessWidget {
   }
 }
 
-class _LiveBadge extends StatelessWidget {
-  const _LiveBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: .72),
-        borderRadius: BorderRadius.circular(7),
-      ),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        child: Text(
-          'LIVE',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-            letterSpacing: .8,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _MobileContinuePoster extends StatelessWidget {
   const _MobileContinuePoster({
     super.key,
