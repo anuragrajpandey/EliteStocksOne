@@ -19,6 +19,10 @@ import 'movie_detail_screen.dart';
 import 'series_detail_screen.dart';
 
 String _year(String s) => RegExp(r'(19|20)\d{2}').firstMatch(s)?.group(0) ?? '';
+String _titleKey(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim();
 
 /// Picks the provider's best English-film bucket for the Home spotlight.
 /// Xtream category names are provider-defined, so prefer an explicit
