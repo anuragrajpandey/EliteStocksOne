@@ -609,9 +609,13 @@ class _HomeScreenState extends State<HomeScreen>
           color: accentInk,
           child: ListView.builder(
             key: const PageStorageKey<String>('mobile-home-scroll'),
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
+            // Keep Android scrolling predictable and low-overhead. The
+            // shelves already provide their own horizontal motion, so the
+            // vertical feed should use a single native-feeling scroll physics.
+            physics: const ClampingScrollPhysics(),
+            cacheExtent: 240,
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
             padding: const EdgeInsets.only(bottom: 120),
             itemCount: shelfCount,
             itemBuilder: (context, index) {
