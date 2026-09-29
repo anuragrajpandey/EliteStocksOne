@@ -692,7 +692,7 @@ class Media3PlayerActivity : Activity() {
                 Gravity.TOP
             )
         }
-        backButton = themedButton("‹", "Back to Lumen", round = true) { finish() }.apply {
+        backButton = themedButton("‹", "Back to EliteStocks One", round = true) { finish() }.apply {
             textSize = 30f
             setPadding(0, 0, 0, dp(3))
         }
@@ -717,7 +717,7 @@ class Media3PlayerActivity : Activity() {
         titleGroup.addView(titleText)
         titleGroup.addView(titleSubtitleText)
         val kind = TextView(this).apply {
-            text = if (isLive) "●  LIVE" else "LUMEN"
+            text = if (isLive) "●  LIVE" else "ELITESTOCKS ONE"
             textSize = 12f
             letterSpacing = 0.14f
             typeface = mediumTypeface
