@@ -1225,78 +1225,25 @@ class _RemoteTapState extends State<RemoteTap> {
 /// playback, and its three outgoing bars read as both live signal and light.
 /// It is rendered natively so it stays crisp and follows the selected accent.
 class Wordmark extends StatelessWidget {
-  final double size; // text font size
+  final double size;
   const Wordmark({super.key, this.size = 34});
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        LumenMark(size: size * 1.08),
-        SizedBox(width: size * 0.24),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'LUMEN',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: size,
-                    fontWeight: FontWeight.w600,
-                    color: textHi,
-                    letterSpacing: -1.8,
-                    height: 0.92,
-                  ),
-                ),
-                SizedBox(width: size * 0.16),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: size * 0.13,
-                    vertical: size * 0.075,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accent,
-                    borderRadius: BorderRadius.circular(
-                      lumenCorner(size * 0.16),
-                    ),
-                  ),
-                  child: Text(
-                    'TV',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: size * 0.28,
-                      fontWeight: FontWeight.w800,
-                      color: onAccent,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: size * 0.13),
-            Text(
-              'LIVE  •  FILMS  •  SERIES',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: size * 0.18,
-                fontWeight: FontWeight.w600,
-                color: muted,
-                letterSpacing: size * 0.055,
-                height: 1,
-              ),
-            ),
-          ],
-        ),
-      ],
+    return Image.asset(
+      'assets/EliteStocksTV.png',
+      width: size * 4.7,
+      height: size * 1.35,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      semanticLabel: 'EliteStocks TV',
     );
   }
 }
 
 /// Standalone mark used in the compact navigation dock.
 class LumenMark extends StatelessWidget {
-  final double size; // height of the mark
+  final double size;
   final Color? signal;
   final Color? frame;
 
@@ -1304,13 +1251,13 @@ class LumenMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
-    return CustomPaint(
-      size: Size.square(size),
-      painter: _LumenMarkPainter(
-        signal: signal ?? accentInk,
-        frame: frame ?? textHi,
-      ),
+    return Image.asset(
+      'assets/EliteStocksTVicon.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      semanticLabel: 'EliteStocks TV icon',
     );
   }
 }
