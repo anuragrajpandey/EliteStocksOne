@@ -672,7 +672,8 @@ class PlaybackController extends ChangeNotifier {
     _posSub = player!.stream.position.listen(_onPosition);
     _completedSub = player!.stream.completed.listen((done) {
       if (!done || isLive) return;
-      final key = current.progressKey;
+      final item = playbackItemAt(items, index);
+      final key = item?.progressKey;
       if (key != null && key.isNotEmpty) {
         // Completion removes the item immediately from Continue Watching,
         // rather than waiting for the next periodic progress checkpoint.
