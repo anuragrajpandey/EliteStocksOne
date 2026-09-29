@@ -148,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeData? _visibleData;
   int _loadGeneration = 0;
   bool _coldRetryUsed = false;
+  Timer? _hourlyHomeRefreshTimer;
   final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
@@ -170,11 +171,18 @@ class _HomeScreenState extends State<HomeScreen>
     // was already available.
     _mobileHeroFuture = _bootstrapMobileHero();
     _beginLoad();
+    _hourlyHomeRefreshTimer = Timer.periodic(
+      const Duration(hours: 1),
+      (_) {
+        if (mounted) refreshContent();
+      },
+    );
     contentRefresh.addListener(_onRefresh);
   }
 
   @override
   void dispose() {
+    _hourlyHomeRefreshTimer?.cancel();
     contentRefresh.removeListener(_onRefresh);
     for (final node in [..._continueFocus.values, ..._channelFocus.values]) {
       node.dispose();
@@ -1017,7 +1025,12 @@ class _MobileHomeSpotlight extends StatefulWidget {
 }
 
 class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
-  final PageController _pageController = PageController();
+  // Keep the PageView on a large circular track so the tenth card flows
+  // directly into the first instead of animating backwards across the list.
+  static const int _loopCenterPage = 50000;
+  final PageController _pageController = PageController(
+    initialPage: _loopCenterPage,
+  );
   Timer? _timer;
   List<_MobileFeature> _items = const [];
   int _index = 0;
@@ -1044,9 +1057,12 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
       final items = await widget.future;
       if (!mounted) return;
       setState(() {
-        _items = items;
+        _items = items.take(10).toList(growable: false);
         _index = 0;
       });
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(_loopCenterPage);
+      }
       _startTimer();
     } catch (_) {
       if (mounted) setState(() => _items = const []);
@@ -1057,10 +1073,10 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
     _timer?.cancel();
     if (_items.length < 2) return;
     _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-      if (!mounted || !_pageController.hasClients) return;
-      final next = (_index + 1) % _items.length;
+      if (!mounted || !_pageController.hasClients || _items.length < 2) return;
+      final currentPage = _pageController.page?.round() ?? _loopCenterPage;
       _pageController.animateToPage(
-        next,
+        currentPage + 1,
         duration: const Duration(milliseconds: 520),
         curve: Curves.easeOutCubic,
       );
@@ -1129,15 +1145,15 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
               borderRadius: BorderRadius.circular(22),
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: _items.length,
                 physics: const ClampingScrollPhysics(),
                 onPageChanged: (page) {
-                  if (!mounted) return;
-                  setState(() => _index = page);
+                  if (!mounted || _items.isEmpty) return;
+                  setState(() => _index = page % _items.length);
                   _startTimer();
                 },
+                itemCount: 100000,
                 itemBuilder: (_, index) {
-                  final item = _items[index];
+                  final item = _items[index % _items.length];
                   return RepaintBoundary(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -1318,7 +1334,7 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              _items.length.clamp(0, 8),
+              _items.length.clamp(0, 10),
               (i) => AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
