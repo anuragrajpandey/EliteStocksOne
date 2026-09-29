@@ -365,8 +365,8 @@ PlaybackFailure classifyPlaybackFailure(
           ? 'The live stream stopped sending data.'
           : 'The video stopped receiving data.',
       suggestion: live
-          ? 'Lumen will reconnect without changing the channel.'
-          : 'Lumen will reopen the video and preserve your progress.',
+          ? 'EliteStocks One will reconnect without changing the channel.'
+          : 'EliteStocks One will reopen the video and preserve your progress.',
       retryable: true,
     );
   }
