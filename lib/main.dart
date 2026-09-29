@@ -108,10 +108,11 @@ Future<void> main() async {
       debugPrint('LUMEN_FOCUS ${path.join(' > ')}');
     });
   }
-  // Android TV playback uses the native Media3 SurfaceView. Avoid waking the
-  // secondary libmpv decoder at launch; that saves memory and removes a burst
-  // of native setup work while the first catalog is becoming focusable.
-  if (!DeviceProfile.isTelevision) {
+  // Android playback uses the native Media3 Activity first. Do not
+  // prewarm libmpv on Android, because the embedded decoder is only a fallback
+  // there and initializing it at launch wastes memory and can trigger native
+  // decoder/texture failures before the user even starts playback.
+  if (!kIsWeb && !Platform.isAndroid) {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => PlaybackController.instance.prewarm(),
     );
