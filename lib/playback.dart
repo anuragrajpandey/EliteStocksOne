@@ -570,6 +570,7 @@ class PlaybackController extends ChangeNotifier {
   bool _retryExhausted = false;
   int _openToken = 0;
   Future<void>? _nativeSetup;
+  Future<void>? _openInFlight;
   List<String> _sourceCandidates = const [];
   int _sourceIndex = 0;
   Duration? _resumeAfterRecovery;
@@ -817,16 +818,37 @@ class PlaybackController extends ChangeNotifier {
     }
     _recordDiagnostic('Opening', _sourceDetail);
     final token = ++_openToken;
-    unawaited(_openMedia(current, token));
+    unawaited(_queueOpenMedia(current, token));
     if (item.favRef != null) Library.instance.addRecent(item.favRef!);
   }
 
   // ---- reconnect logic ----
 
+  Future<void> _queueOpenMedia(PlayerItem target, int token) {
+    final previous = _openInFlight;
+    final next = () async {
+      if (previous != null) {
+        try {
+          await previous;
+        } catch (_) {}
+      }
+      if (token != _openToken || player == null || item != target) return;
+      await _openMedia(target, token);
+    }();
+    _openInFlight = next;
+    return next.whenComplete(() {
+      if (identical(_openInFlight, next)) {
+        _openInFlight = null;
+      }
+    });
+  }
+
   Future<void> _openMedia(PlayerItem target, int token) async {
     final source = activeSourceUrl;
     try {
       await _nativeSetup;
+      if (token != _openToken || player == null || item != target) return;
+      await player!.stop();
       if (token != _openToken || player == null || item != target) return;
       await configurePlayerForItem(player!, target);
       if (token != _openToken || player == null || item != target) return;
@@ -1088,7 +1110,7 @@ class PlaybackController extends ChangeNotifier {
     final current = item;
     final token = ++_openToken;
     notifyListeners();
-    unawaited(_openMedia(current, token));
+    unawaited(_queueOpenMedia(current, token));
   }
 
   void _finishUnavailable(String message) {
@@ -1143,7 +1165,7 @@ class PlaybackController extends ChangeNotifier {
     final current = item;
     final token = ++_openToken;
     notifyListeners();
-    unawaited(_openMedia(current, token));
+    unawaited(_queueOpenMedia(current, token));
   }
 
   bool get _shouldAdvanceSource {
@@ -1198,7 +1220,7 @@ class PlaybackController extends ChangeNotifier {
     }
     final current = item;
     final token = ++_openToken;
-    unawaited(_openMedia(current, token));
+    unawaited(_queueOpenMedia(current, token));
     notifyListeners();
   }
 
@@ -1240,7 +1262,12 @@ class PlaybackController extends ChangeNotifier {
     _wantsPlayback = true;
     _openedAtMs = DateTime.now().millisecondsSinceEpoch;
     _lastProgressMs = _openedAtMs;
-    player!.play();
+    unawaited(
+      player!.play().catchError((error) {
+        _setFailure(classifyPlaybackFailure('$error'));
+        notifyListeners();
+      }),
+    );
   }
 
   void pause() {
@@ -1248,7 +1275,15 @@ class PlaybackController extends ChangeNotifier {
     _networkRecoveryTimer?.cancel();
     _networkRecoveryTimer = null;
     _cancelReconnect();
-    player?.pause();
+    final active = player;
+    if (active != null) {
+      unawaited(
+        active.pause().catchError((error) {
+          _setFailure(classifyPlaybackFailure('$error'));
+          notifyListeners();
+        }),
+      );
+    }
     notifyListeners();
   }
 
