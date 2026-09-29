@@ -138,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeData? _visibleData;
   int _loadGeneration = 0;
   bool _coldRetryUsed = false;
-    final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
+  final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
   // Futures are owned by screen state, not created during build. This keeps
