@@ -1,0 +1,80 @@
+name: Build EliteStocks One Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        required: true
+        default: "apk"
+        type: choice
+        options:
+          - apk
+          - appbundle
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Android ${{ inputs.build_type }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Create temporary release keystore
+        run: |
+          keytool -genkeypair -v -keystore "$RUNNER_TEMP/elitestocks-one-release.jks" -storetype JKS -alias elitestocks-one -keyalg RSA -keysize 2048 -validity 10000 -storepass githubactions -keypass githubactions -dname "CN=EliteStocks One, OU=Build, O=EliteStocks One, C=IN"
+
+      - name: Configure Android signing
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=githubactions
+          keyPassword=githubactions
+          keyAlias=elitestocks-one
+          storeFile=$RUNNER_TEMP/elitestocks-one-release.jks
+          EOF
+
+      - name: Build APK
+        if: inputs.build_type == 'apk'
+        run: flutter build apk --release
+
+      - name: Build App Bundle
+        if: inputs.build_type == 'appbundle'
+        run: flutter build appbundle --release
+
+      - name: Upload APK
+        if: inputs.build_type == 'apk'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EliteStocks-One-APK
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+
+      - name: Upload App Bundle
+        if: inputs.build_type == 'appbundle'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EliteStocks-One-AAB
+          path: build/app/outputs/bundle/release/*.aab
+          if-no-files-found: error
