@@ -65,8 +65,8 @@ enum LumenCornerStyle {
 /// desktop mode and stronger ten-foot TV choices.
 enum LumenFocusStyle {
   outline('Outline', 'A clean two-pixel indicator', 1, 2, 0),
-  lift('Lift', 'Outline with a subtle scale and shadow', 1.025, 2, 8),
-  glow('Glow', 'The strongest signal for TV viewing', 1.04, 2.5, 14);
+  lift('Lift', 'Subtle lift with a soft inner glow', 1.025, 0, 7),
+  glow('Glow', 'A restrained glow for TV viewing', 1.035, 0, 10);
 
   const LumenFocusStyle(
     this.label,
@@ -380,12 +380,7 @@ ThemeData buildTheme(Palette p) {
     borderRadius: BorderRadius.circular(lumenCorner(lumenRadiusMd)),
   );
   WidgetStateProperty<BorderSide?> focusSide({bool outlined = false}) =>
-      WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.focused)) {
-          return BorderSide(color: p.accentInk, width: focusStyle.ringWidth);
-        }
-        return outlined ? BorderSide(color: p.line) : null;
-      });
+      WidgetStatePropertyAll(outlined ? BorderSide(color: p.line) : null);
   final buttonTextStyle = WidgetStatePropertyAll(
     text.labelLarge?.copyWith(fontWeight: FontWeight.w800),
   );
