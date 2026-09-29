@@ -32,14 +32,14 @@ String safeProviderError(Object error) {
         'the server address or ask the provider to fix its certificate.';
   }
   if (error is SocketException) {
-    return 'Lumen could not reach the provider. Check the server address, '
+    return 'EliteStocks One could not reach the provider. Check the server address, '
         'internet connection, or provider status.';
   }
   if (error is http.ClientException) {
     return 'The provider closed the connection before login completed. '
         'Please try again.';
   }
-  return 'Lumen could not connect to this provider. Check the details and '
+  return 'EliteStocks One could not connect to this provider. Check the details and '
       'try again.';
 }
 
