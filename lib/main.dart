@@ -381,7 +381,7 @@ class _SessionGateState extends State<SessionGate> {
 
   /// Make these credentials active: stop account-bound work, atomically switch
   /// persisted state, then rebuild with a fresh client and catalog namespace.
-  void _activate(XtreamCredentials? credentials) {
+  Future<void> _activate(XtreamCredentials? credentials) async {
     ++_sessionChange;
     final previousClient = _client;
 
@@ -408,17 +408,25 @@ class _SessionGateState extends State<SessionGate> {
     unawaited(_guardProfileState(SplitController.instance.close()));
     _guardSessionStep('catalog cache', CatalogCache.instance.clear);
 
-    // Each controller clears its previous profile synchronously before its
-    // first await. Let slower secure-storage and download-folder hydration
-    // finish behind Home instead of trapping the user on a loading screen.
-    unawaited(
-      _guardProfileState(
-        Future<void>.sync(() => _activateProfileState(credentials)),
-      ),
-    );
-    if (credentials != null) {
-      unawaited(_reloadViewerProfiles(credentials, _sessionChange));
+    // Hydrate profile-scoped library/download state before exposing Home.
+    // This removes the first-login race where utility pages and Continue
+    // Watching were mounted before their account state was ready.
+    try {
+      await _activateProfileState(credentials);
+    } catch (error, stack) {
+      AppDiagnostics.instance.record(
+        'Session',
+        'Profile activation failed (' + error.runtimeType.toString() + ')',
+      );
+      debugPrint('Profile activation failed: ' + error.toString() + '\\n' + stack.toString());
     }
+    if (!mounted || credentials == null) return;
+    if (_creds != credentials) return;
+    setState(() {
+      _loading = false;
+      _loadingLabel = 'RESTORING YOUR SESSION';
+    });
+    unawaited(_reloadViewerProfiles(credentials, _sessionChange));
   }
 
   Future<void> _reloadViewerProfiles(
@@ -454,12 +462,12 @@ class _SessionGateState extends State<SessionGate> {
     }
   }
 
-  void _onLogin(XtreamCredentials c) {
+  Future<void> _onLogin(XtreamCredentials c) async {
     AppDiagnostics.instance.record(
       'Session',
       'Login completed (${AppDiagnostics.sourceLabel(c)})',
     );
-    _activate(c);
+    await _activate(c);
   }
 
   Future<void> _switchTo(XtreamCredentials c) async {
@@ -468,7 +476,7 @@ class _SessionGateState extends State<SessionGate> {
       'Session',
       'Profile switched (${AppDiagnostics.sourceLabel(c)})',
     );
-    if (mounted) _activate(c);
+    if (mounted) await _activate(c);
   }
 
   Future<void> _onLogout() async {
