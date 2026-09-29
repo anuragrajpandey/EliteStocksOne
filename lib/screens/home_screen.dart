@@ -1334,7 +1334,7 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              _items.length.clamp(0, 10),
+              10,
               (i) => AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
