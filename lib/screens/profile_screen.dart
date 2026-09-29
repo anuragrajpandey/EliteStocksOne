@@ -694,7 +694,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final settingsColumn = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _personalizationCard(),
+            _appearanceCard(),
             const SizedBox(height: 16),
             _libraryCard(),
             const SizedBox(height: 16),
@@ -726,7 +726,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Text('Profile', style: kTitle()),
                       const SizedBox(height: 4),
                       Text(
-                        'Your account, your Lumen.',
+                        'Your account, your EliteStocks One.',
                         style: TextStyle(color: muted, fontSize: 13),
                       ),
                       const SizedBox(height: 18),
@@ -1063,11 +1063,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _personalizationCard() => _profileSection(
-    eyebrow: 'PERSONALIZATION',
+  Widget _appearanceCard() => _profileSection(
+    eyebrow: 'APPEARANCE',
     title: 'Appearance',
-    subtitle: 'Choose a look that stays consistent on every screen.',
-    icon: Icons.tune_rounded,
+    subtitle: 'Choose dark, light, or system appearance.',
+    icon: Icons.palette_outlined,
     body: [
       _controlHeading(
         'Color mode',
@@ -1077,95 +1077,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _ThemeSelector(
         entryFocusNode: _themeEntryFocus,
         upFocusNode: _lastProfileSwitchFocus ?? _entryFocusNode,
-        downFocusNode: _fontEntryFocus,
-        leftExitFocusNode: widget.shellRailFocusNode,
-      ),
-      const SizedBox(height: 24),
-      _controlHeading('Typeface', 'Set the reading style across Lumen.'),
-      const SizedBox(height: 12),
-      _FontSelector(
-        entryFocusNode: _fontEntryFocus,
-        upFocusNode: _themeEntryFocus,
-        downFocusNode: _cornerEntryFocus,
-        leftExitFocusNode: widget.shellRailFocusNode,
-      ),
-      const SizedBox(height: 24),
-      _controlHeading('Shape', 'Control the roundness of cards and controls.'),
-      const SizedBox(height: 12),
-      _PreferenceSelector<LumenCornerStyle>(
-        entryFocusNode: _cornerEntryFocus,
-        upFocusNode: _fontEntryFocus,
-        downFocusNode: _focusStyleEntryFocus,
-        leftExitFocusNode: widget.shellRailFocusNode,
-        values: LumenCornerStyle.values,
-        current: ThemeController.instance.corners,
-        semanticSuffix: 'corners',
-        keyPrefix: 'profile-corners',
-        labelOf: (value) => value.label,
-        descriptionOf: (value) => value.description,
-        onSelected: ThemeController.instance.setCorners,
-        previewBuilder: (value, selected) => Container(
-          width: 28,
-          height: 20,
-          decoration: BoxDecoration(
-            color: selected
-                ? accent.withValues(alpha: .28)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(
-              (14 * value.multiplier).clamp(3.5, 20),
-            ),
-            border: Border.all(color: selected ? accentInk : muted, width: 2),
-          ),
-        ),
-      ),
-      const SizedBox(height: 24),
-      _controlHeading(
-        'Focus style',
-        'Choose how the selected item stands out on TV and keyboard devices.',
-      ),
-      const SizedBox(height: 12),
-      _PreferenceSelector<LumenFocusStyle>(
-        entryFocusNode: _focusStyleEntryFocus,
-        upFocusNode: _cornerEntryFocus,
-        downFocusNode: _accentEntryFocus,
-        leftExitFocusNode: widget.shellRailFocusNode,
-        values: LumenFocusStyle.values,
-        current: ThemeController.instance.focus,
-        semanticSuffix: 'focus',
-        keyPrefix: 'profile-focus',
-        labelOf: (value) => value.label,
-        descriptionOf: (value) => value.description,
-        onSelected: ThemeController.instance.setFocus,
-        previewBuilder: (value, selected) => Container(
-          width: 28,
-          height: 20,
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: BorderRadius.circular(lumenCorner(7)),
-            border: Border.all(
-              color: selected ? accentInk : muted,
-              width: value.ringWidth,
-            ),
-            boxShadow: value.blurRadius <= 0
-                ? const []
-                : [
-                    BoxShadow(
-                      color: accent.withValues(alpha: .32),
-                      blurRadius: value.blurRadius,
-                    ),
-                  ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 24),
-      _controlHeading(
-        'Accent color',
-        'Applied to focus, progress, selections, and primary actions.',
-      ),
-      const SizedBox(height: 12),
-      _AccentPicker(
-        entryFocusNode: _accentEntryFocus,
-        upFocusNode: _focusStyleEntryFocus,
         downFocusNode: _playbackModeFocus,
         leftExitFocusNode: widget.shellRailFocusNode,
       ),
