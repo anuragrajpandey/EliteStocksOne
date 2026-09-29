@@ -427,7 +427,28 @@ class _SessionGateState extends State<SessionGate> {
       _loading = false;
       _loadingLabel = 'RESTORING YOUR SESSION';
     });
+    // The active client is already valid for this login. Re-read saved viewer
+    // profiles only to discover additional services; do not recreate the client
+    // when the profile list is unchanged, because Home is already mounted.
     unawaited(_reloadViewerProfiles(credentials, _sessionChange));
+  }
+
+  bool _sameCredential(XtreamCredentials a, XtreamCredentials b) =>
+      a.baseUrl == b.baseUrl &&
+      a.username == b.username &&
+      a.password == b.password &&
+      a.m3uUrl == b.m3uUrl &&
+      a.demo == b.demo;
+
+  bool _sameViewerProfiles(
+    List<XtreamCredentials> a,
+    List<XtreamCredentials> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!_sameCredential(a[i], b[i])) return false;
+    }
+    return true;
   }
 
   Future<void> _reloadViewerProfiles(
@@ -436,6 +457,14 @@ class _SessionGateState extends State<SessionGate> {
   ) async {
     final profiles = await Store.viewerProfiles(credentials);
     if (!mounted || change != _sessionChange || _creds == null) return;
+
+    // During first login, _activate() has already hydrated the active account
+    // and mounted Home. If the stored viewer list is the same account we just
+    // opened, keep the existing client and shell state alive. Recreating the
+    // client here used to clear CatalogCache immediately after Home started,
+    // leaving the first-login Home stuck on its loading state until restart.
+    if (_sameViewerProfiles(_viewerProfiles, profiles)) return;
+
     final previousClient = _client;
     setState(() {
       _viewerProfiles = profiles;
