@@ -2830,8 +2830,8 @@ class _RecentChannelCard extends StatelessWidget {
                         ),
                       ),
                     Positioned(
-                      left: 22,
-                      top: 22,
+                      left: compact ? 8 : 22,
+                      top: compact ? 8 : 22,
                       child: Container(
                         padding: EdgeInsets.symmetric(
                           horizontal: compact ? 6 : 12,
