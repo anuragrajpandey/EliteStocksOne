@@ -45,6 +45,15 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
+      - name: Verify TMDB API key
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          test -n "$TMDB_API_KEY" || {
+            echo "TMDB_API_KEY repository secret is missing."
+            exit 1
+          }
+
       - name: Create temporary release keystore
         run: |
           keytool -genkeypair -v -keystore "$RUNNER_TEMP/elitestocks-one-release.jks" -storetype JKS -alias elitestocks-one -keyalg RSA -keysize 2048 -validity 10000 -storepass githubactions -keypass githubactions -dname "CN=EliteStocks One, OU=Build, O=EliteStocks One, C=IN"
