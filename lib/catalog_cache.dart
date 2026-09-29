@@ -568,7 +568,7 @@ class CatalogCache {
     required int limit,
     required String sort,
   }) async {
-    final categories = await liveCategories(client, priority: true);
+    final categories = await live(client, priority: true);
     final normalized = query.trim().toLowerCase();
     final candidates = categories.take(24).toList(growable: false);
     final results = await Future.wait(
