@@ -109,7 +109,6 @@ class _LaunchSplashState extends State<LaunchSplash>
     final size = MediaQuery.sizeOf(context);
     final compact = size.shortestSide < 560;
     final markSize = compact ? 104.0 : 136.0;
-    final brandSize = compact ? 43.0 : 58.0;
     final reducedMotion = MediaQuery.disableAnimationsOf(context);
 
     return Material(
