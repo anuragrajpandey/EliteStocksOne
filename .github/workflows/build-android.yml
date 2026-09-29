@@ -42,6 +42,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+
       - name: Create temporary release keystore
         run: |
           keytool -genkeypair -v -keystore "$RUNNER_TEMP/elitestocks-one-release.jks" -storetype JKS -alias elitestocks-one -keyalg RSA -keysize 2048 -validity 10000 -storepass githubactions -keypass githubactions -dname "CN=EliteStocks One, OU=Build, O=EliteStocks One, C=IN"
