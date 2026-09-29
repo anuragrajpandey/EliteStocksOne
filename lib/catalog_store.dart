@@ -640,30 +640,39 @@ class CatalogStore {
           where: 'profile_scope = ? AND media_kind = ? AND bucket = ?',
           whereArgs: [scope, kind, bucket],
         );
-        final batch = txn.batch();
+        // Large IPTV categories can contain tens of thousands of rows.
+        // Build/commit bounded batches so JSON encoding and SQLite binding
+        // cannot monopolize the Flutter isolate for several seconds.
+        const chunkSize = 300;
         final now = DateTime.now().millisecondsSinceEpoch;
-        for (var position = 0; position < items.length; position++) {
-          final item = items[position];
-          final title = name(item);
-          batch.insert('catalog_items', {
-            'profile_scope': scope,
-            'media_kind': kind,
-            'bucket': bucket,
-            'item_id': id(item),
-            'category_id': category(item),
-            'name': title,
-            'sort_name': _sortName(title),
-            'image': image(item),
-            'payload': jsonEncode(encode(item)),
-            'rating_value': rating(item),
-            'recent_value': recent(item),
-            'year_value': year(item),
-            'source_position': position,
-            'generation': generation,
-            'updated_at': now,
-          });
+        for (var start = 0; start < items.length; start += chunkSize) {
+          final end = math.min(start + chunkSize, items.length);
+          final batch = txn.batch();
+          for (var position = start; position < end; position++) {
+            final item = items[position];
+            final title = name(item);
+            batch.insert('catalog_items', {
+              'profile_scope': scope,
+              'media_kind': kind,
+              'bucket': bucket,
+              'item_id': id(item),
+              'category_id': category(item),
+              'name': title,
+              'sort_name': _sortName(title),
+              'image': image(item),
+              'payload': jsonEncode(encode(item)),
+              'rating_value': rating(item),
+              'recent_value': recent(item),
+              'year_value': year(item),
+              'source_position': position,
+              'generation': generation,
+              'updated_at': now,
+            });
+          }
+          await batch.commit(noResult: true);
+          // Give Flutter a chance to process input/frames between chunks.
+          await Future<void>.delayed(Duration.zero);
         }
-        await batch.commit(noResult: true);
         return true;
       });
     } catch (_) {
