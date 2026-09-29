@@ -2761,12 +2761,13 @@ class _RecentChannelCard extends StatelessWidget {
   final FocusNode focusNode;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+
   const _RecentChannelCard({
     super.key,
     required this.item,
     required this.index,
-    this.width = 280,
-    this.height = 104,
+    this.width = 650,
+    this.height = 240,
     required this.focusNode,
     required this.onTap,
     required this.onLongPress,
@@ -2774,131 +2775,117 @@ class _RecentChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const cardWidth = 650.0;
+    const cardHeight = 240.0;
+    const artworkWidth = 255.0;
+
     return SizedBox(
-      width: width,
-      height: height,
-      child:
-          FocusableTap(
-                focusNode: focusNode,
-                onTap: onTap,
-                onLongPress: onLongPress,
-                builder: (context, active) => AnimatedContainer(
-                  duration: lumenMotionFast,
-                  decoration: BoxDecoration(
-                    color: active ? surfaceHi : surface,
-                    borderRadius: BorderRadius.circular(lumenCorner(16)),
-                    border: Border.all(color: active ? accent : line),
-                    boxShadow: active
-                        ? glow(accent, blur: 18, y: 7, a: .28)
-                        : null,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: height * 1.05,
-                        height: height,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            ColoredBox(color: surfaceHi),
-                            if (item.image.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: MediaImage(
-                                  source: item.image,
-                                  fit: BoxFit.contain,
-                                  memCacheWidth:
-                                      (height *
-                                              1.5 *
-                                              MediaQuery.devicePixelRatioOf(
-                                                context,
-                                              ))
-                                          .round()
-                                          .clamp(240, 600),
-                                ),
-                              ),
-                            Positioned(
-                              left: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFF3B41),
-                                  borderRadius: BorderRadius.circular(
-                                    lumenCorner(6),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'LIVE',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+      width: cardWidth,
+      height: cardHeight,
+      child: FocusableTap(
+        focusNode: focusNode,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        builder: (context, active) => AnimatedContainer(
+          duration: lumenMotionFast,
+          decoration: BoxDecoration(
+            color: active ? surfaceHi : surface,
+            borderRadius: BorderRadius.circular(lumenCorner(16)),
+            border: Border.all(color: active ? accent : line),
+            boxShadow: active ? glow(accent, blur: 18, y: 7, a: .28) : null,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Row(
+            children: [
+              SizedBox(
+                width: artworkWidth,
+                height: cardHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: surfaceHi),
+                    if (item.image.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: MediaImage(
+                          source: item.image,
+                          fit: BoxFit.contain,
+                          memCacheWidth: (artworkWidth *
+                                  MediaQuery.devicePixelRatioOf(context))
+                              .round()
+                              .clamp(320, 900),
                         ),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 13),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: textHi,
-                                  fontSize: DeviceProfile.isTelevision
-                                      ? 14
-                                      : 13,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.15,
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.play_circle_fill_rounded,
-                                    size: 17,
-                                    color: active ? accent : muted,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Watch live',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: active ? accent : muted,
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                    Positioned(
+                      left: 22,
+                      top: 22,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF3B41),
+                          borderRadius: BorderRadius.circular(lumenCorner(8)),
+                        ),
+                        child: const Text(
+                          'LIVE',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textHi,
+                          fontSize: DeviceProfile.isTelevision ? 26 : 24,
+                          fontWeight: FontWeight.w800,
+                          height: 1.12,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.play_circle_fill_rounded,
+                            size: 32,
+                            color: active ? accent : muted,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Watch live',
+                            style: TextStyle(
+                              color: active ? accent : muted,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              )
-              .animate()
-              .fadeIn(duration: 320.ms, delay: (index.clamp(0, 12) * 30).ms)
-              .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
