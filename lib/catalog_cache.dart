@@ -906,7 +906,8 @@ class CatalogCache {
           generation: generation,
         );
         if (identical(_owner, client)) {
-          _vodStreams['*'] = Future.value(items);
+          // Avoid retaining a second copy of the full provider catalog in RAM.
+          _vodStreams.remove('*');
           revision.value++;
         }
       });
@@ -928,7 +929,7 @@ class CatalogCache {
           generation: generation,
         );
         if (identical(_owner, client)) {
-          _series['*'] = Future.value(items);
+          _series.remove('*');
           revision.value++;
         }
       });
@@ -950,7 +951,7 @@ class CatalogCache {
           generation: generation,
         );
         if (identical(_owner, client)) {
-          _liveStreams['*'] = Future.value(items);
+          _liveStreams.remove('*');
           revision.value++;
         }
       });
@@ -972,6 +973,9 @@ class CatalogCache {
           unique[identity(item)] = item;
         }
       }
+      // Yield between large category batches so navigation/input remains
+      // responsive while a full provider index is being assembled.
+      await Future<void>.delayed(Duration.zero);
     }
     return unique.values.toList(growable: false);
   }
