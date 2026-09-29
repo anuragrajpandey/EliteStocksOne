@@ -624,7 +624,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       final target = _navigationHistory.isEmpty
           ? 0
           : _navigationHistory.removeLast();
-      _select(target, rememberCurrent: false);
+      _select(target, rememberCurrent: false, focusContent: false);
       return;
     }
     if (_exitDialogOpen) return;
@@ -868,28 +868,28 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   Widget _item(_Nav nav) {
-    final sel = nav.page == _index;
+    final selected = nav.page == _index;
     return Tooltip(
       message: nav.label,
       child: RemoteTap(
         focusNode: _dockFocusNodes[nav.page],
         semanticLabel: nav.label,
         onFocusChange: (focused) {
-          if (focused && !sel) _select(nav.page);
+          if (focused && nav.page != _index) _select(nav.page, focusContent: false);
         },
         behavior: HitTestBehavior.opaque,
-        onTap: () => _select(nav.page),
+        onTap: () => _select(nav.page, focusContent: false),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOut,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
           decoration: BoxDecoration(
-            color: sel
+            color: selected
                 ? accentInk.withValues(alpha: isDark ? 0.12 : 0.09)
                 : null,
             borderRadius: BorderRadius.circular(lumenCorner(17)),
-            border: sel
+            border: selected
                 ? Border.all(
                     color: accentInk.withValues(alpha: isDark ? 0.28 : 0.42),
                   )
@@ -898,13 +898,13 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(nav.icon, size: 20, color: sel ? accentInk : muted),
+              Icon(nav.icon, size: 20, color: selected ? accentInk : muted),
               const SizedBox(height: 3),
               Text(
                 nav.label,
                 style: TextStyle(
-                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel ? textHi : subtle,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? textHi : subtle,
                   fontSize: 9.5,
                 ),
               ),
