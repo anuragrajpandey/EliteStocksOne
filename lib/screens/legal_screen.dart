@@ -281,35 +281,10 @@ class LegalScreen extends StatelessWidget {
                                             ? (contentWidth - 20) / 3
                                             : double.infinity,
                                         child: _LinkTile(
-                                          icon: Icons.privacy_tip_outlined,
-                                          title: 'Privacy policy',
-                                          subtitle: privacyPolicyUrl,
-                                          onTap: () => _open(privacyPolicyUrl),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: twoColumn
-                                            ? (contentWidth - 20) / 3
-                                            : double.infinity,
-                                        child: _LinkTile(
                                           icon: Icons.movie_filter_outlined,
                                           title: 'The Movie Database',
                                           subtitle: 'themoviedb.org',
-                                          onTap: () => _open(
-                                            'https://www.themoviedb.org',
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: twoColumn
-                                            ? (contentWidth - 20) / 3
-                                            : double.infinity,
-                                        child: _LinkTile(
-                                          icon: Icons.email_outlined,
-                                          title: 'Privacy & support',
-                                          subtitle: supportEmail,
-                                          onTap: () =>
-                                              _open('mailto:$supportEmail'),
+                                          onTap: () => _open('https://www.themoviedb.org'),
                                         ),
                                       ),
                                     ],
