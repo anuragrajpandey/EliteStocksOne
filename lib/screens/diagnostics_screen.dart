@@ -85,9 +85,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       scheme: 'mailto',
       path: supportEmail,
       queryParameters: const {
-        'subject': 'Lumen support request',
+        'subject': 'EliteStocks One support request',
         'body':
-            'My redacted Lumen diagnostic report is copied and ready to paste below.\n\n',
+            'My redacted EliteStocks One diagnostic report is copied and ready to paste below.\n\n',
       },
     );
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -221,7 +221,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
               ),
               const SizedBox(height: 5),
               Text(
-                'Lumen does not upload this report. Provider addresses, usernames, passwords, playlist URLs, media titles and watch history are removed.',
+                'EliteStocks One does not upload this report. Provider addresses, usernames, passwords, playlist URLs, media titles and watch history are removed.',
                 style: TextStyle(color: muted, height: 1.45, fontSize: 13),
               ),
             ],
