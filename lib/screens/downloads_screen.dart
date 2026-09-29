@@ -390,7 +390,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                           eyebrow: 'Take it with you',
                           title: 'Your offline shelf is empty',
                           message:
-                              'Use the download button on a film or episode and Lumen will keep it ready here.',
+                              'Use the download button on a film or episode and EliteStocks One will keep it ready here.',
                         )
                       : visible.isEmpty
                       ? LumenEmptyState(
