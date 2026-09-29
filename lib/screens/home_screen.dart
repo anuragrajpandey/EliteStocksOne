@@ -714,11 +714,34 @@ class _HomeScreenState extends State<HomeScreen>
         );
       });
 
+    String platformBucket(String name) {
+      if (name.contains('netflix')) return 'netflix';
+      if (name.contains('prime') || name.contains('amazon')) return 'amazon';
+      if (name.contains('disney') || name.contains('hotstar')) return 'disney';
+      if (name.contains('hbo') || name.contains('max')) return 'max';
+      if (name.contains('sony')) return 'sony';
+      if (name.contains('apple')) return 'apple';
+      if (name.contains('paramount')) return 'paramount';
+      if (name.contains('peacock')) return 'peacock';
+      if (name.contains('hulu')) return 'hulu';
+      if (name.contains('zee')) return 'zee';
+      if (name.contains('jio')) return 'jio';
+      if (name.contains('lionsgate')) return 'lionsgate';
+      if (name.contains('crunchyroll')) return 'crunchyroll';
+      if (name.contains('mx player')) return 'mx player';
+      if (name.contains('voot')) return 'voot';
+      return '';
+    }
+
     final selected = <_MobileCategorySource>[];
     final seen = <String>{};
+    final seenPlatforms = <String>{};
     for (final source in ranked) {
       if (selected.length == 10) break;
-      if (seen.add(source.key)) selected.add(source);
+      if (!seen.add(source.key)) continue;
+      final platform = platformBucket(source.category.name.toLowerCase());
+      if (platform.isNotEmpty && !seenPlatforms.add(platform)) continue;
+      selected.add(source);
     }
     return selected;
   }
