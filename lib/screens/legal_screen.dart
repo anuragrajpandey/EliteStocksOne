@@ -50,7 +50,7 @@ class _LegalWelcomeScreenState extends State<LegalWelcomeScreen> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Lumen is an independent media player. It does not provide, sell, host, or endorse channels, subscriptions, playlists, or media.',
+                          'EliteStocks One is an independent media player. It does not provide, sell, host, or endorse channels, subscriptions, playlists, or media.',
                           style: TextStyle(color: muted, height: 1.5),
                         ),
                         const SizedBox(height: 18),
@@ -135,7 +135,7 @@ class LegalScreen extends StatelessWidget {
                   eyebrow: 'Trust centre',
                   title: 'Clear terms, private by design',
                   subtitle:
-                      'Plain-language details about what Lumen does, stores and connects to.',
+                      'Plain-language details about what EliteStocks One does, stores and connects to.',
                   icon: Icons.shield_outlined,
                   onBack: () => Navigator.of(context).maybePop(),
                 ),
@@ -199,7 +199,7 @@ class LegalScreen extends StatelessWidget {
                                               ),
                                               const SizedBox(height: 7),
                                               Text(
-                                                'Lumen is an independent player—it supplies no content, runs no ads and includes no analytics SDK.',
+                                                'EliteStocks One is an independent player—it supplies no content, runs no ads and includes no analytics SDK.',
                                                 style: TextStyle(
                                                   color: muted,
                                                   height: 1.5,
@@ -227,14 +227,14 @@ class LegalScreen extends StatelessWidget {
                                         index: '01',
                                         title: 'Independent player',
                                         body:
-                                            'Lumen is a media player and catalog client. It does not provide, sell, host, curate, or endorse subscriptions, channels, playlists, streams, or media. Use only content you own or are authorized to access.',
+                                            'EliteStocks One is a media player and catalog client. It does not provide, sell, host, curate, or endorse subscriptions, channels, playlists, streams, or media. Use only content you own or are authorized to access.',
                                       ),
                                       _Section(
                                         width: cardWidth,
                                         index: '02',
                                         title: 'Private on your device',
                                         body:
-                                            'Profiles, favorites, progress and download state stay on your device. Sensitive mobile data uses encrypted platform storage. Lumen has no advertising or analytics SDK.',
+                                            'Profiles, favorites, progress and download state stay on your device. Sensitive mobile data uses encrypted platform storage. EliteStocks One has no advertising or analytics SDK.',
                                       ),
                                       _Section(
                                         width: cardWidth,
@@ -255,14 +255,14 @@ class LegalScreen extends StatelessWidget {
                                         index: '05',
                                         title: 'Your responsibility',
                                         body:
-                                            'You are responsible for configured services, media rights and applicable laws. Do not use Lumen to infringe copyright or bypass access controls.',
+                                            'You are responsible for configured services, media rights and applicable laws. Do not use EliteStocks One to infringe copyright or bypass access controls.',
                                       ),
                                       _Section(
                                         width: cardWidth,
                                         index: '06',
                                         title: 'Diagnostics you control',
                                         body:
-                                            'Lumen keeps a short, in-memory event log for troubleshooting. A diagnostic report is created only when you open it, removes provider addresses, credentials, playlist URLs, media titles and watch history, and is never uploaded unless you choose to share it.',
+                                            'EliteStocks One keeps a short, in-memory event log for troubleshooting. A diagnostic report is created only when you open it, removes provider addresses, credentials, playlist URLs, media titles and watch history, and is never uploaded unless you choose to share it.',
                                       ),
                                     ],
                                   ),
