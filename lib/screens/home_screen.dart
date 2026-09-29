@@ -116,6 +116,15 @@ class _HomeScreenState extends State<HomeScreen>
   final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
+  // Futures are owned by screen state, not created during build. This keeps
+  // scroll/rebuild cycles from restarting catalog requests.
+  Future<List<_MobileFeature>> _mobileHeroFuture =
+      Future.value(const <_MobileFeature>[]);
+  Map<String, Future<List<VodStream>>> _mobileMovieShelfFutures =
+      <String, Future<List<VodStream>>>{};
+  Map<String, Future<List<Series>>> _mobileSeriesShelfFutures =
+      <String, Future<List<Series>>>{};
+
   @override
   bool get wantKeepAlive => true;
 
@@ -188,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen>
     _future = _loadHome().then((data) {
       if (mounted && generation == _loadGeneration) {
         _visibleData = data;
+        _prepareMobileShelves(data);
         // A first-login race can leave the catalog store empty after the
         // provider session has just been created. One bounded retry clears
         // that cold cache and retries once without creating a refresh loop.
@@ -484,50 +494,102 @@ class _HomeScreenState extends State<HomeScreen>
 
         final movieCategories = d.vodCats.take(5).toList(growable: false);
         final seriesCategories = d.seriesCats.take(5).toList(growable: false);
-
-        final movieShelfFutures = <Category, Future<List<VodStream>>>{
-          for (final category in movieCategories)
-            category: CatalogCache.instance
-                .vodStreams(c, category.id, priority: true)
-                .then((items) => moviesRecentlyAdded(items).take(20).toList())
-                .catchError((_) => <VodStream>[]),
-        };
-        final seriesShelfFutures = <Category, Future<List<Series>>>{
-          for (final category in seriesCategories)
-            category: CatalogCache.instance
-                .seriesItems(c, category.id, priority: true)
-                .then((items) => seriesRecentlyAdded(items).take(20).toList())
-                .catchError((_) => <Series>[]),
-        };
-        final mobileHeroFuture = _mobileHeroItems(
-          c,
-          movieCategories,
-          seriesCategories,
-        );
+        final shelfCount = 4 + movieCategories.length + seriesCategories.length;
 
         return RefreshIndicator(
           onRefresh: _pullRefresh,
           color: accentInk,
-          child: ListView(
+          child: ListView.builder(
+            key: const PageStorageKey<String>('mobile-home-scroll'),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             padding: const EdgeInsets.only(bottom: 120),
-            children: [
-              _searchBar(),
-              const SizedBox(height: 8),
-              _MobileHomeSpotlight(
-                future: mobileHeroFuture,
-                onMoviePlay: (m) {
-                  final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
-                  PlaybackController.instance.open([
-                    PlayerItem(
-                      c.streamUrl('movie', m.streamId, ext: ext),
-                      _clean(m.name),
-                      progressKey: 'movie:' + m.streamId.toString(),
-                      poster: m.icon,
-                      ext: ext,
+            itemCount: shelfCount,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Column(
+                  children: [
+                    _searchBar(),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              }
+              if (index == 1) {
+                return _MobileHomeSpotlight(
+                  future: _mobileHeroFuture,
+                  onMoviePlay: (m) {
+                    final ext = m.containerExtension.isEmpty
+                        ? 'mp4'
+                        : m.containerExtension;
+                    PlaybackController.instance.open([
+                      PlayerItem(
+                        c.streamUrl('movie', m.streamId, ext: ext),
+                        _clean(m.name),
+                        progressKey: 'movie:' + m.streamId.toString(),
+                        poster: m.icon,
+                        ext: ext,
+                      ),
+                    ], 0);
+                  },
+                  onSeriesOpen: (s) => _push(
+                    SeriesDetailScreen(
+                      client: c,
+                      seriesId: s.seriesId,
+                      title: s.name,
+                      preview: s,
                     ),
-                  ], 0);
-                },
-                onSeriesOpen: (s) => _push(
+                  ),
+                );
+              }
+              if (index == 2) {
+                return AnimatedBuilder(
+                  animation: Library.instance,
+                  builder: (_, __) => _mobileContinueWatching(),
+                );
+              }
+              if (index == 3) {
+                return AnimatedBuilder(
+                  animation: Library.instance,
+                  builder: (_, __) => _mobileContinueLiveTv(),
+                );
+              }
+
+              final shelfIndex = index - 4;
+              if (shelfIndex < movieCategories.length) {
+                final category = movieCategories[shelfIndex];
+                return _MobilePosterShelfLoader(
+                  key: ValueKey('mobile-movie-shelf-' + category.id),
+                  title: category.name.trim().isEmpty
+                      ? 'Movies'
+                      : category.name.trim(),
+                  future: _mobileMovieShelfFutures[category.id],
+                  onTap: (m) {
+                    final ext = m.containerExtension.isEmpty
+                        ? 'mp4'
+                        : m.containerExtension;
+                    PlaybackController.instance.open([
+                      PlayerItem(
+                        c.streamUrl('movie', m.streamId, ext: ext),
+                        _clean(m.name),
+                        progressKey: 'movie:' + m.streamId.toString(),
+                        poster: m.icon,
+                        ext: ext,
+                      ),
+                    ], 0);
+                  },
+                );
+              }
+
+              final seriesIndex = shelfIndex - movieCategories.length;
+              final category = seriesCategories[seriesIndex];
+              return _MobileSeriesShelfLoader(
+                key: ValueKey('mobile-series-shelf-' + category.id),
+                title: category.name.trim().isEmpty
+                    ? 'Series'
+                    : category.name.trim(),
+                future: _mobileSeriesShelfFutures[category.id],
+                onTap: (s) => _push(
                   SeriesDetailScreen(
                     client: c,
                     seriesId: s.seriesId,
@@ -535,57 +597,37 @@ class _HomeScreenState extends State<HomeScreen>
                     preview: s,
                   ),
                 ),
-              ),
-              AnimatedBuilder(
-                animation: Library.instance,
-                builder: (_, __) => _mobileContinueWatching(),
-              ),
-              AnimatedBuilder(
-                animation: Library.instance,
-                builder: (_, __) => _mobileContinueLiveTv(),
-              ),
-              for (final category in movieCategories)
-                FutureBuilder<List<VodStream>>(
-                  future: movieShelfFutures[category],
-                  builder: (_, snap) => _MobilePosterShelf(
-                    title: category.name.trim().isEmpty ? 'Movies' : category.name.trim(),
-                    items: snap.data ?? const <VodStream>[],
-                    image: (m) => m.icon,
-                    titleOf: (m) => _clean(m.name),
-                    onTap: (m) {
-                      final ext = m.containerExtension.isEmpty ? 'mp4' : m.containerExtension;
-                      PlaybackController.instance.open([
-                        PlayerItem(
-                          c.streamUrl('movie', m.streamId, ext: ext),
-                          _clean(m.name),
-                          progressKey: 'movie:' + m.streamId.toString(),
-                          poster: m.icon,
-                          ext: ext,
-                        ),
-                      ], 0);
-                    },
-                  ),
-                ),
-              for (final category in seriesCategories)
-                FutureBuilder<List<Series>>(
-                  future: seriesShelfFutures[category],
-                  builder: (_, snap) => _MobileSeriesShelf(
-                    title: category.name.trim().isEmpty ? 'Series' : category.name.trim(),
-                    items: snap.data ?? const <Series>[],
-                    onTap: (s) => _push(
-                      SeriesDetailScreen(
-                        client: c,
-                        seriesId: s.seriesId,
-                        title: s.name,
-                        preview: s,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+              );
+            },
           ),
         );
       },
+    );
+  }
+
+  void _prepareMobileShelves(_HomeData data) {
+    final movieCategories = data.vodCats.take(5).toList(growable: false);
+    final seriesCategories = data.seriesCats.take(5).toList(growable: false);
+    final client = widget.client;
+
+    _mobileMovieShelfFutures = {
+      for (final category in movieCategories)
+        category.id: CatalogCache.instance
+            .vodStreams(client, category.id, priority: true)
+            .then((items) => moviesRecentlyAdded(items).take(20).toList())
+            .catchError((_) => <VodStream>[]),
+    };
+    _mobileSeriesShelfFutures = {
+      for (final category in seriesCategories)
+        category.id: CatalogCache.instance
+            .seriesItems(client, category.id, priority: true)
+            .then((items) => seriesRecentlyAdded(items).take(20).toList())
+            .catchError((_) => <Series>[]),
+    };
+    _mobileHeroFuture = _mobileHeroItems(
+      client,
+      movieCategories,
+      seriesCategories,
     );
   }
 
@@ -595,45 +637,50 @@ class _HomeScreenState extends State<HomeScreen>
     List<Category> seriesCategories,
   ) async {
     try {
-      final movieResults = await Future.wait([
-        for (final category in movieCategories)
-          CatalogCache.instance.vodStreams(client, category.id, priority: true).catchError((_) => <VodStream>[]),
-      ]);
+      final trending = await Tmdb.trendingTvIndia();
+      if (trending.isEmpty) return const <_MobileFeature>[];
+
       final seriesResults = await Future.wait([
         for (final category in seriesCategories)
-          CatalogCache.instance.seriesItems(client, category.id, priority: true).catchError((_) => <Series>[]),
+          CatalogCache.instance
+              .seriesItems(client, category.id, priority: true)
+              .catchError((_) => <Series>[]),
       ]);
-      final movieMap = <int, VodStream>{};
-      for (final items in movieResults) {
-        for (final item in items) {
-          if (item.icon.isNotEmpty) movieMap[item.streamId] = item;
-        }
-      }
-      final seriesMap = <int, Series>{};
+      final seriesMap = <String, Series>{};
       for (final items in seriesResults) {
         for (final item in items) {
-          if (item.cover.isNotEmpty) seriesMap[item.seriesId] = item;
+          final key = _titleKey(item.name);
+          if (key.isNotEmpty) seriesMap[key] = item;
         }
       }
-      final seed = DateTime.now().difference(DateTime(2020)).inDays;
-      final recentSeries = seriesRecentlyAdded(seriesMap.values).take(60).toList();
-      final recentMovies = moviesRecentlyAdded(movieMap.values).take(24).toList();
-      recentSeries.shuffle(math.Random(seed));
-      recentMovies.shuffle(math.Random(seed + 7919));
+
       final result = <_MobileFeature>[];
-      var si = 0;
-      var mi = 0;
-      while (si < recentSeries.length || mi < recentMovies.length) {
-        for (var n = 0; n < 3 && si < recentSeries.length; n++) {
-          result.add(_MobileFeature.series(recentSeries[si++]));
+      for (final tmdb in trending.take(10)) {
+        final provider = seriesMap[_titleKey(tmdb.title)];
+        if (provider != null) {
+          result.add(
+            _MobileFeature.series(
+              provider,
+              tmdbTitle: tmdb.title,
+              tmdbImage: tmdb.backdrop.isNotEmpty ? tmdb.backdrop : tmdb.poster,
+              tmdbYear: tmdb.year,
+            ),
+          );
         }
-        if (mi < recentMovies.length) result.add(_MobileFeature.movie(recentMovies[mi++]));
-        if (result.length >= 24) break;
       }
-      return result;
+
+      return result.take(10).toList(growable: false);
     } catch (_) {
       return const <_MobileFeature>[];
     }
+  }
+
+  String _titleKey(String raw) {
+    var value = raw.toLowerCase();
+    value = value.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+    value = value.replaceAll(RegExp(r'\b(?:the|a|an)\b'), ' ');
+    value = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return value;
   }
 
   Widget _mobileContinueWatching() {
@@ -978,12 +1025,36 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
 }
 
 class _MobileFeature {
-  const _MobileFeature.movie(this.movie) : series = null;
-  const _MobileFeature.series(this.series) : movie = null;
+  const _MobileFeature.movie(
+    this.movie, {
+    this.tmdbTitle = '',
+    this.tmdbImage = '',
+    this.tmdbYear = '',
+  }) : series = null;
+
+  const _MobileFeature.series(
+    this.series, {
+    this.tmdbTitle = '',
+    this.tmdbImage = '',
+    this.tmdbYear = '',
+  }) : movie = null;
+
   final VodStream? movie;
   final Series? series;
-  String get title => movie?.name ?? series?.name ?? '';
-  String get image => movie?.icon ?? series?.cover ?? '';
+  final String tmdbTitle;
+  final String tmdbImage;
+  final String tmdbYear;
+
+  String get title =>
+      tmdbTitle.isNotEmpty ? tmdbTitle : (movie?.name ?? series?.name ?? '');
+
+  String get image => tmdbImage.isNotEmpty
+      ? tmdbImage
+      : (movie?.icon ?? series?.cover ?? '');
+
+  String get key => movie != null
+      ? 'movie:' + movie!.streamId.toString()
+      : 'series:' + series!.seriesId.toString();
 }
 
 class _MobilePosterShelf extends StatelessWidget {
