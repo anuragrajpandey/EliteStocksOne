@@ -110,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen>
   late Future<_HomeData> _future;
   _HomeData? _visibleData;
   int _loadGeneration = 0;
+  bool _coldRetryUsed = false;
   Timer? _catalogRevisionDebounce;
   final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
@@ -182,7 +183,21 @@ class _HomeScreenState extends State<HomeScreen>
   void _beginLoad() {
     final generation = ++_loadGeneration;
     _future = _loadHome().then((data) {
-      if (mounted && generation == _loadGeneration) _visibleData = data;
+      if (mounted && generation == _loadGeneration) {
+        _visibleData = data;
+        // A first-login race can leave the catalog store empty after the
+        // provider session has just been created. One bounded retry clears
+        // that cold cache and retries once without creating a refresh loop.
+        if (!_coldRetryUsed &&
+            widget.categoryLoader == null &&
+            data.vodCats.isEmpty &&
+            data.seriesCats.isEmpty) {
+          _coldRetryUsed = true;
+          Future<void>.delayed(const Duration(milliseconds: 700), () {
+            if (mounted) refreshContent();
+          });
+        }
+      }
       return data;
     });
   }
