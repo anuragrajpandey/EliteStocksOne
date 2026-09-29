@@ -15,6 +15,7 @@ import '../tmdb.dart';
 import '../widgets.dart';
 import '../xtream.dart';
 import 'movie_detail_screen.dart';
+import 'series_detail_screen.dart';
 
 String _year(String s) => RegExp(r'(19|20)\d{2}').firstMatch(s)?.group(0) ?? '';
 
@@ -163,11 +164,19 @@ class _HomeScreenState extends State<HomeScreen>
     if (categoryLoader != null) return _HomeData(await categoryLoader());
     // Plain M3U profiles are live-only. Do not spend multiple retry windows on
     // movie/series endpoints they can never have before showing their channels.
-    if (!widget.client.supportsMovieCatalog) return _HomeData(const []);
-    // The streamlined Home only needs movie categories for its spotlight.
-    // Live, series and full catalog shelves belong on their dedicated tabs.
-    final vod = await CatalogCache.instance.vod(widget.client);
-    return _HomeData(vod);
+    if (!widget.client.supportsMovieCatalog &&
+        !widget.client.supportsSeriesCatalog) {
+      return _HomeData(const [], const []);
+    }
+    final results = await Future.wait([
+      widget.client.supportsMovieCatalog
+          ? CatalogCache.instance.vod(widget.client, priority: true)
+          : Future.value(const <Category>[]),
+      widget.client.supportsSeriesCatalog
+          ? CatalogCache.instance.series(widget.client, priority: true)
+          : Future.value(const <Category>[]),
+    ]);
+    return _HomeData(results[0], results[1]);
   }
 
   void _beginLoad() {
@@ -496,7 +505,8 @@ class _HomeScreenState extends State<HomeScreen>
 
 class _HomeData {
   final List<Category> vodCats;
-  _HomeData(this.vodCats);
+  final List<Category> seriesCats;
+  _HomeData(this.vodCats, this.seriesCats);
 }
 
 /// Immersive desktop hero: full-bleed backdrop, big title, actions, and a
