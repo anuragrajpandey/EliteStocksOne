@@ -1331,6 +1331,20 @@ class SearchScreenState extends State<SearchScreen>
       final visible = _liveByCat[cat] ?? const <LiveStream>[];
       unawaited(_epg.primeVisible(visible.take(16)));
     }
+
+    // For a cold "All" search, serialize the media-type scans. The next
+    // search starts only after the previous page has been stored, so one
+    // oversized provider response cannot coincide with two others.
+    if (cat == 'all' &&
+        _section == 'all' &&
+        _q.trim().isNotEmpty &&
+        generation == _resultGeneration) {
+      if (section == 'series') {
+        _ensure('movie', 'all');
+      } else if (section == 'movie') {
+        _ensure('live', 'all');
+      }
+    }
   }
 
   // builders → result items
@@ -2219,11 +2233,13 @@ class SearchScreenState extends State<SearchScreen>
       // once lets those requests occupy every network slot and delays the
       // title the user is waiting for. Secondary types begin as soon as the
       // first movie page settles and do not block its rendering.
-      // Start all media searches together. A slow movie endpoint must not
-      // block Series and Live results from appearing.
-      _ensure('movie', 'all');
+      // Cold provider searches can return very large category payloads.
+      // Do not fan out Movie + Series + Live at the same time. Start Series
+      // first, then the next media type is started by _storePage after the
+      // previous result has settled. This keeps search responsive on devices
+      // with limited memory and avoids several giant JSON responses landing
+      // on the UI isolate at once.
       _ensure('series', 'all');
-      _ensure('live', 'all');
       final movies = _has('movie', 'all') || _canShowStale('movie', 'all')
           ? _movieByCat['all']
           : null;
