@@ -803,27 +803,33 @@ class CatalogStore {
     if (_disabledForWidgetTests || programmes.isEmpty) return;
     final db = await _database();
     final now = DateTime.now().millisecondsSinceEpoch;
-    final batch = db.batch();
-    for (final programme in programmes) {
-      batch.insert('epg_programmes', {
-        'profile_scope': scope,
-        'source_key': sourceKey,
-        'generation': generation,
-        'channel_key': programme.channelKey,
-        'start_utc': programme.startUtc.millisecondsSinceEpoch,
-        'stop_utc': programme.stopUtc.millisecondsSinceEpoch,
-        'title': programme.title,
-        'subtitle': programme.subtitle,
-        'description': programme.description,
-        'categories_json': jsonEncode(programme.categories),
-        'icon': programme.icon,
-        'has_archive': programme.hasArchive ? 1 : 0,
-        'catchup_id': programme.catchupId,
-        'stop_inferred': programme.stopInferred ? 1 : 0,
-        'updated_at': now,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    const chunkSize = 300;
+    for (var start = 0; start < programmes.length; start += chunkSize) {
+      final end = math.min(start + chunkSize, programmes.length);
+      final batch = db.batch();
+      for (var index = start; index < end; index++) {
+        final programme = programmes[index];
+        batch.insert('epg_programmes', {
+          'profile_scope': scope,
+          'source_key': sourceKey,
+          'generation': generation,
+          'channel_key': programme.channelKey,
+          'start_utc': programme.startUtc.millisecondsSinceEpoch,
+          'stop_utc': programme.stopUtc.millisecondsSinceEpoch,
+          'title': programme.title,
+          'subtitle': programme.subtitle,
+          'description': programme.description,
+          'categories_json': jsonEncode(programme.categories),
+          'icon': programme.icon,
+          'has_archive': programme.hasArchive ? 1 : 0,
+          'catchup_id': programme.catchupId,
+          'stop_inferred': programme.stopInferred ? 1 : 0,
+          'updated_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+      await Future<void>.delayed(Duration.zero);
     }
-    await batch.commit(noResult: true);
   }
 
   Future<void> completeEpgImport(
