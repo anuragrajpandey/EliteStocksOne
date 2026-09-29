@@ -666,6 +666,30 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+
+  Widget _mobileContinueLiveTv() {
+    final channels = Library.instance.recent
+        .where((item) => item.isLive && item.url.trim().isNotEmpty)
+        .take(20)
+        .toList();
+    if (channels.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: _MobileShelf(
+        title: 'Continue LIVE TV',
+        children: [
+          for (final channel in channels)
+            _MobileLivePoster(
+              key: ValueKey('live-' + channel.key),
+              channel: channel,
+              onTap: () => _openRecentChannel(channel),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _searchBar() {
     return Padding(
       // The shell owns the persistent account control in the top-right corner.
@@ -691,13 +715,11 @@ class _HomeScreenState extends State<HomeScreen>
 
 class _MobileHomeSpotlight extends StatefulWidget {
   const _MobileHomeSpotlight({
-    required this.movies,
-    required this.series,
+    required this.future,
     required this.onMoviePlay,
     required this.onSeriesOpen,
   });
-  final Future<List<VodStream>> movies;
-  final Future<List<Series>> series;
+  final Future<List<_MobileFeature>> future;
   final ValueChanged<VodStream> onMoviePlay;
   final ValueChanged<Series> onSeriesOpen;
   @override
@@ -705,9 +727,11 @@ class _MobileHomeSpotlight extends StatefulWidget {
 }
 
 class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
+  final PageController _pageController = PageController();
+  Timer? _timer;
   List<_MobileFeature> _items = const [];
   int _index = 0;
-  Timer? _timer;
+  bool _dragging = false;
 
   @override
   void initState() {
@@ -715,35 +739,49 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant _MobileHomeSpotlight oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.future != widget.future) {
+      _timer?.cancel();
+      _items = const [];
+      _index = 0;
+      _load();
+    }
+  }
+
   Future<void> _load() async {
     try {
-      final result = await Future.wait([widget.movies, widget.series]);
-      final movies = result[0] as List<VodStream>;
-      final series = result[1] as List<Series>;
+      final items = await widget.future;
       if (!mounted) return;
-      final items = <_MobileFeature>[
-        ...movies.take(6).map(_MobileFeature.movie),
-        ...series.take(6).map(_MobileFeature.series),
-      ];
       setState(() {
         _items = items;
         _index = 0;
       });
-      if (items.length > 1) {
-        _timer?.cancel();
-        _timer = Timer.periodic(const Duration(seconds: 6), (_) {
-          if (!mounted) return;
-          setState(() => _index = (_index + 1) % _items.length);
-        });
-      }
+      _startTimer();
     } catch (_) {
       if (mounted) setState(() => _items = const []);
     }
   }
 
+  void _startTimer() {
+    _timer?.cancel();
+    if (_items.length < 2) return;
+    _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (!mounted || _dragging || !_pageController.hasClients) return;
+      final next = (_index + 1) % _items.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -759,87 +797,169 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
   Widget build(BuildContext context) {
     if (_items.isEmpty) {
       return const SizedBox(
-        height: 285,
+        height: 420,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
-    final item = _items[_index];
+    final width = MediaQuery.sizeOf(context).width - 32;
+    final height = (width * 1.28).clamp(360.0, 500.0);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
       child: Column(
         children: [
           SizedBox(
-            height: 330,
-            width: double.infinity,
-            child: Material(
-              color: surface,
-              borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => _activate(item),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    MediaImage(
-                      key: ValueKey(item.image),
-                      source: item.image,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.center,
-                      memCacheWidth: (MediaQuery.sizeOf(context).width *
-                              MediaQuery.devicePixelRatioOf(context))
-                          .round()
-                          .clamp(360, 900),
-                      error: ColoredBox(color: surfaceHi),
-                    ),
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0x14000000), Color(0xB8000000)],
-                          stops: [0.42, 1],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 16,
-                      right: 16,
-                      bottom: 16,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+            height: height,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _items.length,
+                physics: const ClampingScrollPhysics(),
+                onPageChanged: (page) {
+                  if (!mounted) return;
+                  setState(() => _index = page);
+                  _startTimer();
+                },
+                itemBuilder: (_, index) {
+                  final item = _items[index];
+                  return RepaintBoundary(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragStart: (_) {
+                        _dragging = true;
+                        _timer?.cancel();
+                      },
+                      onHorizontalDragEnd: (_) {
+                        _dragging = false;
+                        _startTimer();
+                      },
+                      onTap: () => _activate(item),
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Expanded(
-                            child: Text(
-                              _clean(item.title),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 23,
-                                fontWeight: FontWeight.w800,
+                          MediaImage(
+                            key: ValueKey(item.image),
+                            source: item.image,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                            memCacheWidth: (width * MediaQuery.devicePixelRatioOf(context))
+                                .round()
+                                .clamp(420, 1080),
+                            error: ColoredBox(color: surfaceHi),
+                          ),
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Color(0x12000000),
+                                  Color(0x22000000),
+                                  Color(0xD9000000),
+                                ],
+                                stops: [0.25, 0.48, 1],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Container(
-                            padding: const EdgeInsets.all(11),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .94),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              item.movie != null
-                                  ? Icons.play_arrow_rounded
-                                  : Icons.arrow_forward_rounded,
-                              color: Colors.black,
-                              size: 22,
+                          Positioned(
+                            left: 18,
+                            right: 18,
+                            bottom: 18,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: accentInk,
+                                        borderRadius: BorderRadius.circular(7),
+                                      ),
+                                      child: Text(
+                                        item.movie != null ? 'MOVIE' : 'TV SHOW',
+                                        style: TextStyle(
+                                          color: foregroundFor(accentInk),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: .8,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (_year(item.title).isNotEmpty)
+                                      Text(
+                                        _year(item.title),
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  _clean(item.title),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 25,
+                                    height: 1.02,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 11),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: FilledButton.icon(
+                                        onPressed: () => _activate(item),
+                                        icon: Icon(
+                                          item.movie != null
+                                              ? Icons.play_arrow_rounded
+                                              : Icons.info_outline_rounded,
+                                          size: 20,
+                                        ),
+                                        label: Text(item.movie != null ? 'Play' : 'View'),
+                                        style: FilledButton.styleFrom(
+                                          minimumSize: const Size.fromHeight(44),
+                                          backgroundColor: Colors.white,
+                                          foregroundColor: Colors.black,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(9),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    SizedBox(
+                                      width: 48,
+                                      height: 44,
+                                      child: FilledButton(
+                                        onPressed: () => _activate(item),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Colors.white.withValues(alpha: .18),
+                                          foregroundColor: Colors.white,
+                                          padding: EdgeInsets.zero,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(9),
+                                          ),
+                                        ),
+                                        child: const Icon(Icons.add_rounded, size: 24),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -847,7 +967,7 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
-              _items.length.clamp(0, 6),
+              _items.length.clamp(0, 8),
               (i) => AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -911,7 +1031,12 @@ class _MobilePosterShelf extends StatelessWidget {
 }
 
 class _MobileSeriesShelf extends StatelessWidget {
-  const _MobileSeriesShelf({required this.items, required this.onTap});
+  const _MobileSeriesShelf({
+    required this.title,
+    required this.items,
+    required this.onTap,
+  });
+  final String title;
   final List<Series> items;
   final ValueChanged<Series> onTap;
 
@@ -921,7 +1046,7 @@ class _MobileSeriesShelf extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: _MobileShelf(
-        title: 'Series',
+        title: title,
         children: [
           for (final item in items.take(20))
             _MobilePosterCard(
@@ -958,7 +1083,7 @@ class _MobileShelf extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: 174,
+          height: 194,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -986,8 +1111,8 @@ class _MobilePosterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 150,
-      height: 174,
+      width: 132,
+      height: 194,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
@@ -995,15 +1120,15 @@ class _MobilePosterCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(
-              width: 150,
-              height: 150,
+              width: 132,
+              height: 184,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: MediaImage(
                   source: image,
                   fit: BoxFit.cover,
                   memCacheWidth:
-                      (150 * MediaQuery.devicePixelRatioOf(context))
+                      (132 * MediaQuery.devicePixelRatioOf(context))
                           .round()
                           .clamp(180, 420),
                   error: ColoredBox(color: surfaceHi),
@@ -1028,6 +1153,96 @@ class _MobilePosterCard extends StatelessWidget {
   }
 }
 
+class _MobileLivePoster extends StatelessWidget {
+  const _MobileLivePoster({
+    super.key,
+    required this.channel,
+    required this.onTap,
+  });
+  final MediaRef channel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 132,
+      height: 194,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 132,
+              height: 184,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    MediaImage(
+                      source: channel.image,
+                      fit: BoxFit.cover,
+                      memCacheWidth:
+                          (132 * MediaQuery.devicePixelRatioOf(context))
+                              .round()
+                              .clamp(180, 420),
+                      error: ColoredBox(color: surfaceHi),
+                    ),
+                    const Positioned(
+                      top: 8,
+                      left: 8,
+                      child: _LiveBadge(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              channel.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textHi,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Text(
+          'LIVE',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+            letterSpacing: .8,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _MobileContinuePoster extends StatelessWidget {
   const _MobileContinuePoster({
     super.key,
@@ -1040,8 +1255,8 @@ class _MobileContinuePoster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 150,
-      height: 156,
+      width: 132,
+      height: 194,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
