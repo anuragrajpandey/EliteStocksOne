@@ -51,10 +51,10 @@ class Updater {
   static final Updater instance = Updater._();
 
   static const _releaseApi =
-      'https://api.github.com/repos/Talha-Ashraf420/Lumen-App/releases/latest';
+      'https://api.github.com/repos/anuragrajpandey/EliteStocksOne/releases/latest';
   static const _playStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.talhaashraf.lumen';
-  static const _playStoreAppUrl = 'market://details?id=com.talhaashraf.lumen';
+      'https://play.google.com/store/apps/details?id=com.talhaashraf.elitestocksone';
+  static const _playStoreAppUrl = 'market://details?id=com.talhaashraf.elitestocksone';
 
   String _version = '';
   int _installedBuild = kBuildNumber;
@@ -140,7 +140,7 @@ class Updater {
             Uri.parse(_releaseApi),
             headers: {
               'Accept': 'application/vnd.github+json',
-              'User-Agent': 'Lumen',
+              'User-Agent': 'EliteStocks One',
             },
           )
           .timeout(const Duration(seconds: 15));
@@ -186,7 +186,7 @@ class Updater {
       final assets = j['assets'];
       if (assets is List) {
         for (final asset in assets.whereType<Map<String, dynamic>>()) {
-          if ((asset['name'] ?? '').toString() == 'Lumen-Android.apk') {
+          if ((asset['name'] ?? '').toString() == 'EliteStocks-One-Android.apk') {
             final candidate = (asset['browser_download_url'] ?? '').toString();
             if (candidate.startsWith('https://')) {
               androidDownloadUrl = candidate;
@@ -203,7 +203,7 @@ class Updater {
           notes: body.replaceFirst(RegExp(r'build:\s*\d+\s*'), '').trim(),
           releaseUrl:
               (j['html_url'] ??
-                      'https://github.com/Talha-Ashraf420/Lumen-App/releases/latest')
+                      'https://github.com/anuragrajpandey/EliteStocksOne/releases/latest')
                   .toString(),
           androidDownloadUrl: androidDownloadUrl,
         ),
