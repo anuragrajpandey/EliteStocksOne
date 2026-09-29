@@ -773,19 +773,25 @@ class CatalogStore {
     if (_disabledForWidgetTests || channels.isEmpty) return;
     final db = await _database();
     final now = DateTime.now().millisecondsSinceEpoch;
-    final batch = db.batch();
-    for (final channel in channels) {
-      batch.insert('epg_channels', {
-        'profile_scope': scope,
-        'source_key': sourceKey,
-        'generation': generation,
-        'channel_key': channel.channelKey,
-        'display_names_json': jsonEncode(channel.displayNames),
-        'icon': channel.icon,
-        'updated_at': now,
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    const chunkSize = 300;
+    for (var start = 0; start < channels.length; start += chunkSize) {
+      final end = math.min(start + chunkSize, channels.length);
+      final batch = db.batch();
+      for (var index = start; index < end; index++) {
+        final channel = channels[index];
+        batch.insert('epg_channels', {
+          'profile_scope': scope,
+          'source_key': sourceKey,
+          'generation': generation,
+          'channel_key': channel.channelKey,
+          'display_names_json': jsonEncode(channel.displayNames),
+          'icon': channel.icon,
+          'updated_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+      await Future<void>.delayed(Duration.zero);
     }
-    await batch.commit(noResult: true);
   }
 
   Future<void> appendEpgProgrammes(
