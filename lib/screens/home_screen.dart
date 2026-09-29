@@ -99,10 +99,16 @@ const _mobileCuratedShelfTitles = <String>[
   'Editor\'s Picks',
 ];
 
-class _MobileProviderPool {
-  const _MobileProviderPool({required this.movies, required this.series});
-  final List<VodStream> movies;
-  final List<Series> series;
+class _MobileCategorySource {
+  const _MobileCategorySource({
+    required this.category,
+    required this.isSeries,
+  });
+
+  final Category category;
+  final bool isSeries;
+
+  String get key => '${isSeries ? 'series' : 'movie'}:${category.id}';
 }
 
 class _MobileCuratedShelf {
@@ -604,76 +610,149 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  void _prepareMobileShelves(_HomeData data) {
-    final movieCategories = data.vodCats.take(5).toList(growable: false);
-    final seriesCategories = data.seriesCats.take(5).toList(growable: false);
-    final client = widget.client;
-
-    // Keep the provider scan bounded: five movie + five series categories,
-    // twenty recent rows from each. The ten Home shelves are custom rankings
-    // over this provider pool, not the provider's category names.
-    final movieFutures = <Future<List<VodStream>>>[
-      for (final category in movieCategories)
-        CatalogCache.instance
-            .vodStreams(client, category.id, priority: true)
-            .then(
-              (items) => moviesRecentlyAdded(items)
-                  .where((item) => item.name.trim().isNotEmpty)
-                  .take(20)
-                  .toList(growable: false),
-            )
-            .catchError((_) => <VodStream>[]),
-    ];
-    final seriesFutures = <Future<List<Series>>>[
-      for (final category in seriesCategories)
-        CatalogCache.instance
-            .seriesItems(client, category.id, priority: true)
-            .then(
-              (items) => seriesRecentlyAdded(items)
-                  .where((item) => item.name.trim().isNotEmpty)
-                  .take(20)
-                  .toList(growable: false),
-            )
-            .catchError((_) => <Series>[]),
+  List<_MobileCategorySource> _selectMobileCategories(_HomeData data) {
+    final sources = <_MobileCategorySource>[
+      ...data.seriesCats.map(
+        (category) => _MobileCategorySource(category: category, isSeries: true),
+      ),
+      ...data.vodCats.map(
+        (category) => _MobileCategorySource(category: category, isSeries: false),
+      ),
     ];
 
-    final providerPoolFuture = Future.wait([
-      ...movieFutures,
-      ...seriesFutures,
-    ]).then((groups) {
-      final movies = <VodStream>[];
-      final series = <Series>[];
-      for (var i = 0; i < movieFutures.length; i++) {
-        movies.addAll(groups[i] as List<VodStream>);
+    // Prefer real provider buckets such as Netflix, Prime Video, Disney+,
+    // HBO/Max, Sony, Hotstar, Apple TV+, Paramount, etc. Unknown provider
+    // buckets remain valid fallbacks.
+    const platformWords = <String>[
+      'netflix',
+      'prime',
+      'amazon',
+      'disney',
+      'hotstar',
+      'hbo',
+      'max',
+      'sony',
+      'apple',
+      'paramount',
+      'peacock',
+      'hulu',
+      'zee',
+      'jio',
+      'lionsgate',
+      'crunchyroll',
+      'aha',
+      'mx player',
+      'voot',
+    ];
+
+    int score(_MobileCategorySource source) {
+      final name = source.category.name.trim().toLowerCase();
+      if (name.isEmpty) return -10000;
+      if (name == 'all' || name == 'uncategorized' || name == 'other') {
+        return -5000;
       }
-      for (var i = movieFutures.length; i < groups.length; i++) {
-        series.addAll(groups[i] as List<Series>);
+      var value = 0;
+      for (var i = 0; i < platformWords.length; i++) {
+        if (name.contains(platformWords[i])) {
+          value = math.max(value, 1000 - i * 20);
+        }
       }
-      return _MobileProviderPool(movies: movies, series: series);
-    });
+      if (name.contains('trailer') || name.contains('cam')) value -= 300;
+      if (name.contains('4k') || name.contains('uhd')) value += 20;
+      return value;
+    }
 
-    _mobileHeroFuture = _mobileHeroItems(client, providerPoolFuture);
+    final ranked = [...sources]
+      ..sort((a, b) {
+        final byScore = score(b).compareTo(score(a));
+        if (byScore != 0) return byScore;
+        return a.category.name.toLowerCase().compareTo(
+          b.category.name.toLowerCase(),
+        );
+      });
 
-    _mobileCuratedShelves = [
-      for (final title in _mobileCuratedShelfTitles)
-        _MobileCuratedShelf(
-          title: title,
-          future: _buildCuratedShelf(title, providerPoolFuture),
-        ),
-    ];
+    final selected = <_MobileCategorySource>[];
+    final seen = <String>{};
+    for (final source in ranked) {
+      if (selected.length == 10) break;
+      if (seen.add(source.key)) selected.add(source);
+    }
+    return selected;
+  }
+
+  Future<List<_MobileFeature>> _loadMobileCategory(
+    XtreamClient client,
+    _MobileCategorySource source,
+    String shelfTitle,
+  ) async {
+    try {
+      if (source.isSeries) {
+        final items = await CatalogCache.instance.seriesItems(
+          client,
+          source.category.id,
+          priority: true,
+        );
+        var rows = seriesRecentlyAdded(items)
+            .where((item) => item.name.trim().isNotEmpty)
+            .take(20)
+            .map((item) => _MobileFeature.series(item))
+            .toList(growable: false);
+        if (shelfTitle != 'New & Noteworthy' &&
+            shelfTitle != 'Fresh Releases') {
+          rows = [...rows]
+            ..sort((a, b) =>
+                (b.series?.rating ?? 0).compareTo(a.series?.rating ?? 0));
+        }
+        return _enrichMissingTmdbArtwork(rows);
+      }
+
+      final items = await CatalogCache.instance.vodStreams(
+        client,
+        source.category.id,
+        priority: true,
+      );
+      var rows = moviesRecentlyAdded(items)
+          .where((item) => item.name.trim().isNotEmpty)
+          .take(20)
+          .map((item) => _MobileFeature.movie(item))
+          .toList(growable: false);
+      if (shelfTitle != 'New & Noteworthy' &&
+          shelfTitle != 'Fresh Releases') {
+        rows = [...rows]
+          ..sort((a, b) =>
+              (b.movie?.rating ?? 0).compareTo(a.movie?.rating ?? 0));
+      }
+      return _enrichMissingTmdbArtwork(rows);
+    } catch (_) {
+      return const <_MobileFeature>[];
+    }
   }
 
   Future<List<_MobileFeature>> _mobileHeroItems(
     XtreamClient client,
-    Future<_MobileProviderPool> providerPoolFuture,
+    List<_MobileCategorySource> sources,
   ) async {
     try {
-      final pool = await providerPoolFuture;
-      final trending = await Tmdb.trendingTvIndia(candidateLimit: 40);
-      if (trending.isEmpty) return const <_MobileFeature>[];
+      // The hero has its own small, series-only load. It must not wait for all
+      // ten Home shelves to finish.
+      final seriesSources = sources.where((source) => source.isSeries).take(5);
+      final groups = await Future.wait([
+        for (final source in seriesSources)
+          CatalogCache.instance
+              .seriesItems(client, source.category.id, priority: true)
+              .catchError((_) => <Series>[]),
+      ]);
+      final providerSeries = <Series>[];
+      final seenProvider = <int>{};
+      for (final group in groups) {
+        for (final item in seriesRecentlyAdded(group).take(20)) {
+          if (seenProvider.add(item.seriesId)) providerSeries.add(item);
+        }
+      }
 
+      final trending = await Tmdb.trendingTvIndia(candidateLimit: 40);
       final seriesMap = <String, Series>{};
-      for (final item in pool.series) {
+      for (final item in providerSeries) {
         final key = _titleKey(item.name);
         if (key.isNotEmpty) seriesMap.putIfAbsent(key, () => item);
       }
@@ -692,148 +771,77 @@ class _HomeScreenState extends State<HomeScreen>
         );
         if (result.length == 10) break;
       }
+
+      // TMDB matching is an enhancement, not a reason to leave Home blank.
+      if (result.isEmpty) {
+        result.addAll(
+          providerSeries
+              .where((item) => item.cover.isNotEmpty)
+              .take(10)
+              .map((item) => _MobileFeature.series(item)),
+        );
+      }
       return result;
     } catch (_) {
       return const <_MobileFeature>[];
     }
   }
 
-  Future<List<_MobileFeature>> _buildCuratedShelf(
-    String title,
-    Future<_MobileProviderPool> providerPoolFuture,
-  ) async {
-    try {
-      final pool = await providerPoolFuture;
+  void _prepareMobileShelves(_HomeData data) {
+    final sources = _selectMobileCategories(data);
+    final client = widget.client;
 
-      // These two shelves are based on the provider's own dates, while TMDB
-      // still supplies missing artwork at card-render time.
-      if (title == 'New & Noteworthy') {
-        final all = <_MobileFeature>[
-          ...moviesRecentlyAdded(pool.movies).map(
-            (item) => _MobileFeature.movie(item),
-          ),
-          ...seriesRecentlyAdded(pool.series).map(
-            (item) => _MobileFeature.series(item),
-          ),
-        ];
-        all.sort((a, b) {
-          final aDate = a.movie?.added ?? a.series?.releaseDate ?? '';
-          final bDate = b.movie?.added ?? b.series?.releaseDate ?? '';
-          return mediaAddedValue(bDate).compareTo(mediaAddedValue(aDate));
-        });
-        return _enrichMissingTmdbArtwork(all.take(20).toList());
-      }
-
-      if (title == 'Editor\'s Picks') {
-        final all = <_MobileFeature>[
-          ...pool.movies.map((item) => _MobileFeature.movie(item)),
-          ...pool.series.map((item) => _MobileFeature.series(item)),
-        ];
-        all.sort((a, b) {
-          final ar = a.movie?.rating ?? a.series?.rating ?? 0;
-          final br = b.movie?.rating ?? b.series?.rating ?? 0;
-          return br.compareTo(ar);
-        });
-        return _enrichMissingTmdbArtwork(all.take(20).toList());
-      }
-
-      final candidates = await Tmdb.curated(title);
-      if (candidates.isEmpty) return const <_MobileFeature>[];
-
-      final movieMap = <String, VodStream>{};
-      final seriesMap = <String, Series>{};
-      for (final item in pool.movies) {
-        final key = _titleKey(item.name);
-        if (key.isNotEmpty) movieMap.putIfAbsent(key, () => item);
-      }
-      for (final item in pool.series) {
-        final key = _titleKey(item.name);
-        if (key.isNotEmpty) seriesMap.putIfAbsent(key, () => item);
-      }
-
-      final result = <_MobileFeature>[];
-      final seen = <String>{};
-      for (final candidate in candidates) {
-        final key = _titleKey(candidate.title);
-        if (key.isEmpty || !seen.add(candidate.kind + ':' + key)) continue;
-
-        if (candidate.kind == 'movie') {
-          final movie = movieMap[key];
-          if (movie == null) continue;
-          result.add(
-            _MobileFeature.movie(
-              movie,
-              tmdbTitle: candidate.title,
-              tmdbImage: candidate.poster,
-              tmdbYear: candidate.year,
+    // Each visible shelf gets a different provider category. At most ten
+    // categories are loaded, with at most twenty cards displayed per shelf.
+    _mobileHeroFuture = _mobileHeroItems(client, sources);
+    _mobileCuratedShelves = [
+      for (var i = 0; i < _mobileCuratedShelfTitles.length; i++)
+        if (i < sources.length)
+          _MobileCuratedShelf(
+            title: _mobileCuratedShelfTitles[i],
+            future: _loadMobileCategory(
+              client,
+              sources[i],
+              _mobileCuratedShelfTitles[i],
             ),
-          );
-        } else {
-          final series = seriesMap[key];
-          if (series == null) continue;
-          result.add(
-            _MobileFeature.series(
-              series,
-              tmdbTitle: candidate.title,
-              tmdbImage: candidate.poster,
-              tmdbYear: candidate.year,
-            ),
-          );
-        }
-        if (result.length == 20) break;
-      }
-
-      // A custom shelf is allowed to be shorter than 20, but it should never
-      // vanish because a provider uses a different title spelling. Fill only
-      // with provider rows that already have artwork, preserving the "no image,
-      // no card" rule.
-      if (result.length < 20) {
-        final fallback = <_MobileFeature>[
-          ...pool.movies.map((item) => _MobileFeature.movie(item)),
-          ...pool.series.map((item) => _MobileFeature.series(item)),
-        ]..sort((a, b) {
-            final ar = a.movie?.rating ?? a.series?.rating ?? 0;
-            final br = b.movie?.rating ?? b.series?.rating ?? 0;
-            return br.compareTo(ar);
-          });
-        for (final item in fallback) {
-          if (result.length == 20) break;
-          final key = item.key;
-          if (!item.image.isNotEmpty || !seen.add(key)) continue;
-          result.add(item);
-        }
-      }
-      return result;
-    } catch (_) {
-      return const <_MobileFeature>[];
-    }
+          ),
+    ];
   }
 
   Future<List<_MobileFeature>> _enrichMissingTmdbArtwork(
     List<_MobileFeature> items,
   ) async {
     if (items.isEmpty) return const <_MobileFeature>[];
-    final enriched = await Future.wait(
-      items.map((item) async {
-        if (item.image.isNotEmpty) return item;
-        try {
-          final movie = item.movie;
-          if (movie != null) {
-            final info = await Tmdb.movie(movie.name);
-            if (info != null && info.poster.isNotEmpty) {
-              return _MobileFeature.movie(
-                movie,
-                tmdbTitle: info.title,
-                tmdbImage: info.poster,
-                tmdbYear: info.year,
-              );
-            }
+    final enriched = <_MobileFeature>[];
+    var missingLookups = 0;
+    for (final item in items.take(20)) {
+      if (item.image.isNotEmpty) {
+        enriched.add(item);
+        continue;
+      }
+      // Keep the repair pass deliberately small so ten Home shelves do not
+      // launch hundreds of TMDB requests on a low-end phone.
+      if (missingLookups >= 8) continue;
+      missingLookups++;
+      var repaired = item;
+      try {
+        final movie = item.movie;
+        if (movie != null) {
+          final info = await Tmdb.movie(movie.name);
+          if (info != null && info.poster.isNotEmpty) {
+            repaired = _MobileFeature.movie(
+              movie,
+              tmdbTitle: info.title,
+              tmdbImage: info.poster,
+              tmdbYear: info.year,
+            );
           }
+        } else {
           final series = item.series;
           if (series != null) {
             final info = await Tmdb.tv(series.name);
             if (info != null && info.poster.isNotEmpty) {
-              return _MobileFeature.series(
+              repaired = _MobileFeature.series(
                 series,
                 tmdbTitle: info.title,
                 tmdbImage: info.poster,
@@ -841,37 +849,11 @@ class _HomeScreenState extends State<HomeScreen>
               );
             }
           }
-        } catch (_) {
-          // Artwork enrichment is optional. Keep the playable provider row.
         }
-        return item;
-      }),
-    );
-    return enriched.where((item) => item.image.isNotEmpty).take(20).toList(
-      growable: false,
-    );
-  }
-
-  String _titleKey(String raw) {
-    var value = raw.toLowerCase();
-    value = value.replaceAll(
-      RegExp(r'\b(?:19|20)\d{2}\b'),
-      ' ',
-    );
-    value = value.replaceAll(
-      RegExp(r'\b(?:season|s)\s*\d{1,2}\b'),
-      ' ',
-    );
-    value = value.replaceAll(
-      RegExp(
-        r'\b(?:4k|uhd|fhd|hd|sd|1080p|720p|2160p|hevc|x265|x264)\b',
-      ),
-      ' ',
-    );
-    value = value.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
-    value = value.replaceAll(RegExp(r'\b(?:the|a|an)\b'), ' ');
-    value = value.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return value;
+      } catch (_) {}
+      if (repaired.image.isNotEmpty) enriched.add(repaired);
+    }
+    return enriched.take(20).toList(growable: false);
   }
 
   Widget _mobileContinueWatching() {
