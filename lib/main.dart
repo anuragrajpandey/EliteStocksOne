@@ -392,7 +392,8 @@ class _SessionGateState extends State<SessionGate> {
       _creds = credentials;
       _viewerProfiles = credentials == null ? const [] : [credentials];
       _client = null;
-      _loading = false;
+      _loading = credentials != null;
+      _loadingLabel = credentials == null ? 'RESTORING YOUR SESSION' : 'OPENING YOUR LIBRARY';
       _selectingViewer = false;
     });
     AppDiagnostics.instance.record(
