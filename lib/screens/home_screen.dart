@@ -423,6 +423,9 @@ class _HomeScreenState extends State<HomeScreen>
               key: const ValueKey('home-continue-watching-viewport'),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                primary: false,
+                physics: const ClampingScrollPhysics(),
+                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: DeviceProfile.isTelevision ? 28 : 20,
@@ -456,6 +459,9 @@ class _HomeScreenState extends State<HomeScreen>
               key: const ValueKey('home-recent-channels-viewport'),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                primary: false,
+                physics: const ClampingScrollPhysics(),
+                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: DeviceProfile.isTelevision ? 28 : 20,
@@ -974,6 +980,9 @@ class _HomeScreenState extends State<HomeScreen>
               key: const ValueKey('home-mobile-recent-channels-viewport'),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                primary: false,
+                physics: const ClampingScrollPhysics(),
+                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -1908,6 +1917,9 @@ class _SpotlightHeroState extends State<_SpotlightHero> {
               key: const ValueKey('home-spotlight-compact-viewport'),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
+                primary: false,
+                physics: const ClampingScrollPhysics(),
+                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
