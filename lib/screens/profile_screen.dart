@@ -480,8 +480,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: onAccent,
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Clear'),
