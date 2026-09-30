@@ -138,6 +138,7 @@ class Media3PlayerActivity : Activity() {
     private lateinit var swapViewsButton: TextView
     private lateinit var closePaneButton: TextView
     private lateinit var moreButton: TextView
+    private lateinit var engineButton: TextView
     private lateinit var progressBar: SeekBar
     private lateinit var positionText: TextView
     private lateinit var durationText: TextView
@@ -1205,7 +1206,7 @@ class Media3PlayerActivity : Activity() {
     private fun buildSeekFeedback(): TextView = TextView(this).apply {
         textSize = 19f
         typeface = mediumTypeface
-        setTextColor(accentColor)
+        setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
         setPadding(dp(20), dp(12), dp(20), dp(12))
         background = roundedRect(
@@ -1396,6 +1397,11 @@ class Media3PlayerActivity : Activity() {
         moreButton = toolButton("⋮", "More", "More playback options") {
             showMoreDialog()
         }
+        engineButton = toolButton("MPV", "Player", "Switch to MPV Player") {
+            switchToEmbeddedPlayer()
+        }.apply {
+            visibility = if (!isTelevisionDevice) View.VISIBLE else View.GONE
+        }
 
         val tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1410,6 +1416,7 @@ class Media3PlayerActivity : Activity() {
         tools.addView(swapViewsButton, transportParams(dp(92), dp(56), margin = 3))
         tools.addView(closePaneButton, transportParams(dp(92), dp(56), margin = 3))
         tools.addView(moreButton, transportParams(dp(92), dp(56), margin = 3))
+        tools.addView(engineButton, transportParams(dp(78), dp(56), margin = 3))
         // Match the shared Flutter player: transport owns a clear row above
         // the timeline, while secondary tools remain below it. Keeping these
         // bands separate prevents focus scaling and time labels from colliding.
@@ -1682,20 +1689,20 @@ class Media3PlayerActivity : Activity() {
         addState(
             intArrayOf(android.R.attr.state_focused),
             shape(
-                accentColor,
+                Color.WHITE,
                 Color.WHITE,
                 1
             )
         )
         addState(
             intArrayOf(android.R.attr.state_pressed),
-            shape(withAlpha(accentColor, 0xE6), Color.WHITE, 1)
+            shape(0xFFE6E6E6.toInt(), Color.WHITE, 1)
         )
         addState(
             intArrayOf(),
             shape(
-                0xD9111511.toInt(),
-                if (prominent) withAlpha(accentColor, 0x99) else 0x99596157.toInt(),
+                0xD9111111.toInt(),
+                0x66FFFFFF,
                 1
             )
         )
@@ -2824,6 +2831,14 @@ class Media3PlayerActivity : Activity() {
         url = playlistUrls[index]
         alternateUrl = playlistAlternateUrls.getOrNull(index).orEmpty()
         usingAlternateSource = false
+    }
+
+    private fun switchToEmbeddedPlayer() {
+        if (isTelevisionDevice) return
+        hideControls(force = true)
+        returningToEmbeddedEngine = true
+        setResult(RESULT_USE_EMBEDDED_ENGINE)
+        finish()
     }
 
     private fun showError(message: String, allowEngineFallback: Boolean = true) {
