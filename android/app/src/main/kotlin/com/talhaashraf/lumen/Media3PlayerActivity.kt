@@ -1224,7 +1224,7 @@ class Media3PlayerActivity : Activity() {
         setPadding(dp(20), dp(12), dp(20), dp(12))
         background = roundedRect(
             0xE6111511.toInt(),
-            0x99FFFFFF,
+            0x99FFFFFF.toInt(),
             1,
             24
         )
