@@ -1489,7 +1489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ? _entryFocusNode
             : switchAt(index - 1),
         LogicalKeyboardKey.arrowDown: index == profiles.length - 1
-            ? _themeEntryFocus
+            ? _playbackModeFocus
             : switchAt(index + 1),
       }),
       onTap: () => _switch(p),
@@ -1561,7 +1561,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? _entryFocusNode
                       : combineAt(index - 1),
                   LogicalKeyboardKey.arrowDown: index == profiles.length - 1
-                      ? _themeEntryFocus
+                      ? _playbackModeFocus
                       : combineAt(index + 1),
                 }),
                 onTap: () => _toggleCombined(p),
@@ -1598,7 +1598,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? _entryFocusNode
                       : editAt(index - 1),
                   LogicalKeyboardKey.arrowDown: index == profiles.length - 1
-                      ? _themeEntryFocus
+                      ? _playbackModeFocus
                       : editAt(index + 1),
                 }),
                 onTap: () => _edit(p),
@@ -1630,7 +1630,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ? _entryFocusNode
                     : deleteAt(index - 1),
                 LogicalKeyboardKey.arrowDown: index == profiles.length - 1
-                    ? _themeEntryFocus
+                    ? _playbackModeFocus
                     : deleteAt(index + 1),
               }),
               onTap: () => _delete(p),
@@ -1994,8 +1994,8 @@ class _FontSelectorState extends State<_FontSelector> {
     if (sameRow) {
       _focusNodes[target].requestFocus();
     } else if (target < 0 &&
-        widget.leftExitFocusNode?.canRequestFocus == true) {
-      widget.leftExitFocusNode!.requestFocus();
+        widget.leftExitFocusNode.canRequestFocus) {
+      widget.leftExitFocusNode.requestFocus();
     }
     return KeyEventResult.handled;
   }
@@ -2163,8 +2163,8 @@ class _PreferenceSelectorState<T> extends State<_PreferenceSelector<T>> {
     if (sameRow) {
       _focusNodes[target].requestFocus();
     } else if (target < 0 &&
-        widget.leftExitFocusNode?.canRequestFocus == true) {
-      widget.leftExitFocusNode!.requestFocus();
+        widget.leftExitFocusNode.canRequestFocus) {
+      widget.leftExitFocusNode.requestFocus();
     }
     return KeyEventResult.handled;
   }
@@ -2326,8 +2326,8 @@ class _AccentPickerState extends State<_AccentPicker> {
     if (sameRow) {
       _focusNodes[target].requestFocus();
     } else if (target < 0 &&
-        widget.leftExitFocusNode?.canRequestFocus == true) {
-      widget.leftExitFocusNode!.requestFocus();
+        widget.leftExitFocusNode.canRequestFocus) {
+      widget.leftExitFocusNode.requestFocus();
     }
     return KeyEventResult.handled;
   }
