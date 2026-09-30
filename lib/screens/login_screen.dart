@@ -50,6 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   late final FocusNode _demoFocus;
   final Map<String, FocusNode> _profileFocus = {};
   bool _busy = false;
+  bool _obscurePassword = true;
   String? _error;
   String? _status;
   List<XtreamCredentials> _profiles = [];
@@ -597,27 +598,32 @@ class _LoginScreenState extends State<LoginScreen> {
           autofocus: DeviceProfile.isTelevision,
         ),
         const SizedBox(height: 11),
-        Row(
-          children: [
-            Expanded(
-              child: _field(
-                _user,
-                'Username',
-                focusNode: _userFocus,
-                nextFocus: _passFocus,
-              ),
+        _field(
+          _user,
+          'Username',
+          focusNode: _userFocus,
+          nextFocus: _passFocus,
+        ),
+        const SizedBox(height: 12),
+        _field(
+          _pass,
+          'Password',
+          focusNode: _passFocus,
+          nextFocus: _submitFocus,
+          obscure: _obscurePassword,
+          suffix: IconButton(
+            tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+            onPressed: () => setState(
+              () => _obscurePassword = !_obscurePassword,
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _field(
-                _pass,
-                'Password',
-                focusNode: _passFocus,
-                nextFocus: _submitFocus,
-                obscure: true,
-              ),
+            icon: Icon(
+              _obscurePassword
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              color: Colors.white70,
+              size: 21,
             ),
-          ],
+          ),
         ),
         if (_url.text.trim().toLowerCase().startsWith('http://')) ...[
           const SizedBox(height: 10),
@@ -691,7 +697,9 @@ class _LoginScreenState extends State<LoginScreen> {
               duration: lumenMotionFast,
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
-                color: _busy ? accent.withValues(alpha: .58) : accent,
+                color: _busy
+                    ? Colors.white.withValues(alpha: .58)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(lumenCorner(14)),
               ),
               child: Row(
@@ -716,7 +724,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     _status ?? 'Enter EliteStocks One',
                     style: TextStyle(
-                      color: onAccent,
+                      color: Colors.black,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -817,6 +825,7 @@ class _LoginScreenState extends State<LoginScreen> {
     String? hint,
     bool obscure = false,
     bool autofocus = false,
+    Widget? suffix,
   }) {
     return RemoteTextInput(
       child: TextField(
@@ -831,7 +840,11 @@ class _LoginScreenState extends State<LoginScreen> {
         textInputAction: TextInputAction.next,
         onChanged: (_) => setState(() {}),
         onSubmitted: (_) => nextFocus.requestFocus(),
-        decoration: InputDecoration(labelText: label, hintText: hint),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          suffixIcon: suffix,
+        ),
       ),
     );
   }
