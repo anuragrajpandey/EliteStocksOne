@@ -139,6 +139,9 @@ class Media3PlayerActivity : Activity() {
     private lateinit var closePaneButton: TextView
     private lateinit var moreButton: TextView
     private lateinit var engineButton: TextView
+    private lateinit var speedButton: TextView
+    private lateinit var audioSubtitleButton: TextView
+    private var playbackSpeed = 1f
     private lateinit var progressBar: SeekBar
     private lateinit var positionText: TextView
     private lateinit var durationText: TextView
@@ -1402,21 +1405,40 @@ class Media3PlayerActivity : Activity() {
         }.apply {
             visibility = if (!isTelevisionDevice) View.VISIBLE else View.GONE
         }
+        speedButton = toolButton("◔", "Speed (1x)", "Change playback speed") {
+            showSpeedDialog()
+        }.apply {
+            visibility = if (!isTelevisionDevice) View.VISIBLE else View.GONE
+        }
+        audioSubtitleButton = toolButton(
+            "CC",
+            "Audio & Subtitles",
+            "Open audio and subtitle controls"
+        ) {
+            showSubtitleDialog()
+        }.apply {
+            visibility = if (!isTelevisionDevice) View.VISIBLE else View.GONE
+        }
 
         val tools = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        tools.addView(playlistButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(subtitleButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(audioButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(qualityButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(splitButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(swapAudioButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(swapViewsButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(closePaneButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(moreButton, transportParams(dp(92), dp(56), margin = 3))
-        tools.addView(engineButton, transportParams(dp(78), dp(56), margin = 3))
+        if (!isTelevisionDevice) {
+            tools.addView(speedButton, transportParams(dp(132), dp(56), margin = 4))
+            tools.addView(audioSubtitleButton, transportParams(dp(156), dp(56), margin = 4))
+            tools.addView(engineButton, transportParams(dp(104), dp(56), margin = 4))
+        } else {
+            tools.addView(playlistButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(subtitleButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(audioButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(qualityButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(splitButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(swapAudioButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(swapViewsButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(closePaneButton, transportParams(dp(92), dp(56), margin = 3))
+            tools.addView(moreButton, transportParams(dp(92), dp(56), margin = 3))
+        }
         // Match the shared Flutter player: transport owns a clear row above
         // the timeline, while secondary tools remain below it. Keeping these
         // bands separate prevents focus scaling and time labels from colliding.
@@ -2831,6 +2853,26 @@ class Media3PlayerActivity : Activity() {
         url = playlistUrls[index]
         alternateUrl = playlistAlternateUrls.getOrNull(index).orEmpty()
         usingAlternateSource = false
+    }
+
+    private fun showSpeedDialog() {
+        val speeds = floatArrayOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
+        val labels = speeds.map { value ->
+            if (value == 1f) "✓  1x" else value.toString() + "x"
+        }.toTypedArray()
+        val selected = speeds.indexOfFirst {
+            kotlin.math.abs(it - playbackSpeed) < 0.01f
+        }.coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle("Speed")
+            .setSingleChoiceItems(labels, selected) { dialog, which ->
+                playbackSpeed = speeds[which]
+                player.setPlaybackSpeed(playbackSpeed)
+                speedButton.text = "◔\nSpeed (" + playbackSpeed + "x)"
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun switchToEmbeddedPlayer() {
