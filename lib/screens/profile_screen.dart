@@ -56,7 +56,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _pageScroll = ScrollController();
   final _entryFocus = FocusNode(debugLabel: 'Profile add account');
   final _viewerManageFocus = FocusNode(debugLabel: 'Switch or manage viewers');
-  final _themeEntryFocus = FocusNode(debugLabel: 'Dark appearance');
   final _fontEntryFocus = FocusNode(debugLabel: 'Lumen font');
   final _cornerEntryFocus = FocusNode(debugLabel: 'Crisp corners');
   final _focusStyleEntryFocus = FocusNode(debugLabel: 'Outline focus');
@@ -312,7 +311,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _entryFocusNode.onKeyEvent = (_, event) => _moveVertically(
       event,
       up: _viewerManageFocus,
-      down: _firstProfileSwitchFocus ?? _themeEntryFocus,
+      down: _firstProfileSwitchFocus ?? _playbackModeFocus,
     );
     _viewerManageFocus.onKeyEvent = (_, event) => _moveVertically(
       event,
@@ -620,7 +619,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _viewerManageFocus.dispose();
     _pageScroll.dispose();
     _entryFocus.dispose();
-    _themeEntryFocus.dispose();
     _fontEntryFocus.dispose();
     _cornerEntryFocus.dispose();
     _focusStyleEntryFocus.dispose();
@@ -675,8 +673,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final settingsColumn = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _appearanceCard(),
-            const SizedBox(height: 16),
             _libraryCard(),
             const SizedBox(height: 16),
             _privacyCard(),
@@ -1044,26 +1040,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _appearanceCard() => _profileSection(
-    eyebrow: 'APPEARANCE',
-    title: 'Appearance',
-    subtitle: 'Choose dark, light, or system appearance.',
-    icon: Icons.palette_outlined,
-    body: [
-      _controlHeading(
-        'Color mode',
-        'Use a dark, light, or device-matched interface.',
-      ),
-      const SizedBox(height: 12),
-      _ThemeSelector(
-        entryFocusNode: _themeEntryFocus,
-        upFocusNode: _lastProfileSwitchFocus ?? _entryFocusNode,
-        downFocusNode: _playbackModeFocus,
-        leftExitFocusNode: widget.shellRailFocusNode,
-      ),
-    ],
-  );
-
   Future<void> _choosePlaybackMode() async {
     final current = PlaybackModeController.instance.mode.value;
     final selected = await showDialog<PlaybackMode>(
@@ -1119,7 +1095,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           focusNode: _playbackModeFocus,
           onKeyEvent: (_, event) => _moveVertically(
             event,
-            up: _accentEntryFocus,
+            up: _lastProfileSwitchFocus ?? _entryFocusNode,
             down: _insightsFocus,
           ),
           icon: Icons.network_check_rounded,
@@ -2281,149 +2257,6 @@ class _PreferenceSelectorState<T> extends State<_PreferenceSelector<T>> {
       },
     ),
   );
-}
-
-/// Dark / Light / System segmented selector wired to ThemeController.
-class _ThemeSelector extends StatefulWidget {
-  const _ThemeSelector({
-    required this.entryFocusNode,
-    required this.upFocusNode,
-    required this.downFocusNode,
-    this.leftExitFocusNode,
-  });
-
-  final FocusNode entryFocusNode;
-  final FocusNode upFocusNode;
-  final FocusNode downFocusNode;
-  final FocusNode? leftExitFocusNode;
-
-  @override
-  State<_ThemeSelector> createState() => _ThemeSelectorState();
-}
-
-class _ThemeSelectorState extends State<_ThemeSelector> {
-  static const _opts = [
-    (mode: ThemeMode.dark, icon: Icons.dark_mode_rounded, label: 'Dark'),
-    (mode: ThemeMode.light, icon: Icons.light_mode_rounded, label: 'Light'),
-    (
-      mode: ThemeMode.system,
-      icon: Icons.brightness_auto_rounded,
-      label: 'System',
-    ),
-  ];
-
-  late final List<FocusNode> _focusNodes = [
-    widget.entryFocusNode,
-    for (var index = 1; index < _opts.length; index++)
-      FocusNode(debugLabel: '${_opts[index].label} appearance'),
-  ];
-
-  @override
-  void dispose() {
-    // The first node belongs to ProfileScreen so it can be part of the
-    // page-wide route. This selector owns only the remaining nodes.
-    for (final node in _focusNodes.skip(1)) {
-      node.dispose();
-    }
-    super.dispose();
-  }
-
-  KeyEventResult _route(int index, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      widget.upFocusNode.requestFocus();
-      return KeyEventResult.handled;
-    }
-    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      widget.downFocusNode.requestFocus();
-      return KeyEventResult.handled;
-    }
-    final delta = event.logicalKey == LogicalKeyboardKey.arrowLeft
-        ? -1
-        : event.logicalKey == LogicalKeyboardKey.arrowRight
-        ? 1
-        : 0;
-    if (delta == 0) return KeyEventResult.ignored;
-    final target = index + delta;
-    if (target >= 0 && target < _focusNodes.length) {
-      _focusNodes[target].requestFocus();
-    } else if (target < 0 &&
-        widget.leftExitFocusNode?.canRequestFocus == true) {
-      widget.leftExitFocusNode!.requestFocus();
-    }
-    return KeyEventResult.handled;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Theme.of(context);
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: ThemeController.instance.mode,
-      builder: (context, current, _) {
-        return Container(
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: surfaceHi.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(lumenCorner(18)),
-          ),
-          child: Row(
-            children: [
-              for (var index = 0; index < _opts.length; index++)
-                Expanded(
-                  child: RemoteTap(
-                    focusNode: _focusNodes[index],
-                    onKeyEvent: (_, event) => _route(index, event),
-                    behavior: HitTestBehavior.opaque,
-                    semanticLabel: '${_opts[index].label} appearance',
-                    onTap: () =>
-                        ThemeController.instance.set(_opts[index].mode),
-                    child: AnimatedContainer(
-                      key: ValueKey(
-                        'profile-theme-${_opts[index].label.toLowerCase()}',
-                      ),
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOut,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: current == _opts[index].mode
-                            ? accent
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(lumenCorner(14)),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            _opts[index].icon,
-                            size: 20,
-                            color: current == _opts[index].mode
-                                ? onAccent
-                                : muted,
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            _opts[index].label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: current == _opts[index].mode
-                                  ? onAccent
-                                  : muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
 
 /// Accent picker: five named Lumen directions plus D-pad-friendly sliders.
