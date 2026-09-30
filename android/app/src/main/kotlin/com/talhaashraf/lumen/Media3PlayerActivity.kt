@@ -1415,7 +1415,7 @@ class Media3PlayerActivity : Activity() {
             "Audio & Subtitles",
             "Open audio and subtitle controls"
         ) {
-            showSubtitleDialog()
+            showAudioSubtitleDialog()
         }.apply {
             visibility = if (!isTelevisionDevice) View.VISIBLE else View.GONE
         }
@@ -2853,6 +2853,20 @@ class Media3PlayerActivity : Activity() {
         url = playlistUrls[index]
         alternateUrl = playlistAlternateUrls.getOrNull(index).orEmpty()
         usingAlternateSource = false
+    }
+
+    private fun showAudioSubtitleDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Audio & Subtitles")
+            .setItems(arrayOf("Audio", "Subtitles")) { dialog, which ->
+                dialog.dismiss()
+                if (which == 0) {
+                    showTrackDialog(C.TRACK_TYPE_AUDIO, "Audio", allowOff = false)
+                } else {
+                    showSubtitleDialog()
+                }
+            }
+            .show()
     }
 
     private fun showSpeedDialog() {
