@@ -478,28 +478,48 @@ ThemeData buildTheme(Palette p) {
     progressIndicatorTheme: ProgressIndicatorThemeData(color: p.accentInk),
     textButtonTheme: TextButtonThemeData(
       style: ButtonStyle(
-        foregroundColor: WidgetStatePropertyAll(p.accentInk),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? Colors.white38
+              : Colors.white,
+        ),
         textStyle: buttonTextStyle,
         shape: WidgetStatePropertyAll(controlShape),
-        side: focusSide(),
+        side: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.focused)
+              ? const BorderSide(color: Colors.white, width: 1)
+              : BorderSide.none,
+        ),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: ButtonStyle(
-        backgroundColor: WidgetStatePropertyAll(p.accent),
-        foregroundColor: WidgetStatePropertyAll(foregroundFor(p.accent)),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed)
+              ? const Color(0xFFE6E6E6)
+              : Colors.white,
+        ),
+        foregroundColor: const WidgetStatePropertyAll(Colors.black),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
         shape: WidgetStatePropertyAll(controlShape),
-        side: focusSide(),
+        side: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.focused)
+              ? const BorderSide(color: Colors.white, width: 1)
+              : BorderSide.none,
+        ),
         textStyle: buttonTextStyle,
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: ButtonStyle(
-        foregroundColor: WidgetStatePropertyAll(p.textHi),
-        side: focusSide(outlined: true),
+        foregroundColor: const WidgetStatePropertyAll(Colors.white),
+        side: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.focused)
+              ? const BorderSide(color: Colors.white, width: 1.2)
+              : const BorderSide(color: Colors.white24, width: 1),
+        ),
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
@@ -564,8 +584,6 @@ ThemeData buildTheme(Palette p) {
 class ThemeController {
   ThemeController._();
   static final ThemeController instance = ThemeController._();
-  static const _key = 'lumen_theme_mode';
-
   static const _accentKey = 'lumen_accent_color';
   static const _fontKey = 'lumen_font';
   static const _cornersKey = 'lumen_corner_style';
@@ -585,27 +603,13 @@ class ThemeController {
   Listenable get listenable => mode;
 
   Future<void> load() async {
-    final p = await SharedPreferences.getInstance();
-    switch (p.getString(_key)) {
-      case 'light':
-        mode.value = ThemeMode.light;
-      case 'system':
-        mode.value = ThemeMode.system;
-      case 'dark':
-        mode.value = ThemeMode.dark;
-    }
-
-    // Appearance customization is fixed for EliteStocks One. Only the
-    // light/dark/system mode remains user-selectable.
+    // EliteStocks One is intentionally dark-only. Any older persisted
+    // light/system preference is ignored so the UI never changes appearance.
+    mode.value = ThemeMode.dark;
     accent.value = const Color(0xFFFFB84D);
     font.value = LumenFont.inter;
     corners.value = LumenCornerStyle.crisp;
     focus.value = LumenFocusStyle.lift;
-  }
-  Future<void> set(ThemeMode m) async {
-    mode.value = m;
-    final p = await SharedPreferences.getInstance();
-    await p.setString(_key, m.name);
   }
 
   Future<void> setAccent(Color c) async {
