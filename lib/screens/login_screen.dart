@@ -417,8 +417,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: accent,
-                foregroundColor: onAccent,
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
               ),
               onPressed: () {
                 final raw = urlCtrl.text.trim();
