@@ -1145,6 +1145,40 @@ class _PlayerHostState extends State<PlayerHost> {
     await _enterFullscreen();
   }
 
+  Future<void> _switchToExo() async {
+    if (!_isAndroid || DeviceProfile.isTelevision || !pc.hasMedia) return;
+    final current = pc.item;
+    final position = pc.player?.state.position.inSeconds ?? 0;
+    final opened = await AndroidCompatibilityPlayer.open(
+      url: pc.activeSourceUrl,
+      title: current.title,
+      isLive: current.isLive,
+      headers: {
+        'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
+        'Accept': '*/*',
+        ...current.httpHeaders,
+      },
+      playlist: [
+        AndroidCompatibilityPlaylistItem(
+          url: pc.activeSourceUrl,
+          title: current.title,
+          favoriteRef: current.favRef,
+          progressKey: current.progressKey,
+          poster: current.poster,
+          ext: current.ext,
+          resumePositionSeconds: position,
+        ),
+      ],
+      initialIndex: 0,
+    );
+    if (!mounted) return;
+    if (opened) {
+      _close();
+    } else {
+      _flashHud('EXO Player unavailable', Icons.error_outline_rounded);
+    }
+  }
+
   void _toggleMute() {
     _muted = !_muted;
     if (!_muted && _curVol == 0) _curVol = 100;
@@ -2397,7 +2431,7 @@ class _PlayerHostState extends State<PlayerHost> {
                       fav
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
-                      color: fav ? accent2 : Colors.white,
+                      color: Colors.white,
                     ),
                   );
                 },
@@ -2471,18 +2505,14 @@ class _PlayerHostState extends State<PlayerHost> {
                     width: television ? 54 : 58,
                     height: television ? 54 : 58,
                     decoration: BoxDecoration(
-                      color: television
-                          ? Colors.black.withValues(alpha: 0.72)
-                          : accent,
+                      color: Colors.black.withValues(alpha: 0.78),
                       shape: BoxShape.circle,
-                      border: television
-                          ? Border.all(color: accent, width: 2)
-                          : null,
-                      boxShadow: glow(accent, a: television ? 0.24 : 0.32),
+                      border: Border.all(color: Colors.white, width: 1),
+
                     ),
                     child: Icon(
                       playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      color: television ? accent : onAccent,
+                      color: Colors.white,
                       size: television ? 30 : 32,
                     ),
                   ),
@@ -2621,6 +2651,13 @@ class _PlayerHostState extends State<PlayerHost> {
                         tooltip: 'Lock controls',
                         compact: compact,
                       ),
+                    if (_isAndroid && !DeviceProfile.isTelevision)
+                      _bottomIcon(
+                        Icons.swap_horiz_rounded,
+                        _switchToExo,
+                        tooltip: 'Switch to EXO Player',
+                        compact: compact,
+                      ),
                     _bottomIcon(
                       Icons.closed_caption_rounded,
                       _pickSubtitles,
@@ -2753,8 +2790,8 @@ class _PlayerHostState extends State<PlayerHost> {
               child: SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 3,
-                  thumbColor: accent,
-                  activeTrackColor: accent,
+                  thumbColor: Colors.white,
+                  activeTrackColor: Colors.white,
                   inactiveTrackColor: Colors.white24,
                   overlayShape: const RoundSliderOverlayShape(
                     overlayRadius: 14,
