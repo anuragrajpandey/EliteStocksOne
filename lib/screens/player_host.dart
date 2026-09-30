@@ -1953,8 +1953,8 @@ class _PlayerHostState extends State<PlayerHost> {
             autofocus: true,
             focusNode: _recoveryActionFocus,
             style: FilledButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: onAccent,
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             ),
             onPressed: () {
@@ -3454,8 +3454,8 @@ class _PlayerHostState extends State<PlayerHost> {
               children: [
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: onAccent,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
                   ),
                   onPressed: pc.retryExhausted ? pc.retryNow : null,
                   icon: const Icon(Icons.refresh_rounded, size: 18),
