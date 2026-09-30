@@ -1079,7 +1079,7 @@ class _RemoteTapState extends State<RemoteTap> {
     Theme.of(context);
     final focusStyle = activeFocusStyle;
     final enabled = widget.onTap != null;
-    final focusColor = widget.focusRingColor ?? accentInk;
+    final focusColor = widget.focusRingColor ?? Colors.white;
     final detector = FocusableActionDetector(
       enabled: enabled,
       focusNode: _effectiveFocusNode,
