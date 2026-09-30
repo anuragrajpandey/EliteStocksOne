@@ -110,7 +110,7 @@ class RemoteFocusTraversalPolicy extends ReadingOrderTraversalPolicy {
 /// that dock, and focus scaling can paint outside the content canvas. This
 /// viewport clips the rail to its own geometry and adds a small, dynamic edge
 /// fade only while more content exists in that direction.
-class HorizontalShelfViewport extends StatefulWidget {
+class HorizontalShelfViewport extends StatelessWidget {
   const HorizontalShelfViewport({
     super.key,
     required this.child,
@@ -121,79 +121,11 @@ class HorizontalShelfViewport extends StatefulWidget {
   final double fadeExtent;
 
   @override
-  State<HorizontalShelfViewport> createState() =>
-      _HorizontalShelfViewportState();
-}
-
-class _HorizontalShelfViewportState extends State<HorizontalShelfViewport> {
-  bool _fadeStart = false;
-  bool _fadeEnd = false;
-  bool _updateScheduled = false;
-  bool _nextFadeStart = false;
-  bool _nextFadeEnd = false;
-
-  void _updateEdges(ScrollMetrics metrics) {
-    _nextFadeStart = metrics.extentBefore > 1;
-    _nextFadeEnd = metrics.extentAfter > 1;
-    if (_nextFadeStart == _fadeStart && _nextFadeEnd == _fadeEnd) return;
-    if (_updateScheduled) return;
-    _updateScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateScheduled = false;
-      if (!mounted) return;
-      if (_fadeStart == _nextFadeStart && _fadeEnd == _nextFadeEnd) return;
-      setState(() {
-        _fadeStart = _nextFadeStart;
-        _fadeEnd = _nextFadeEnd;
-      });
-    });
-  }
-
-  bool _onScroll(ScrollNotification notification) {
-    if (notification.metrics.axis == Axis.horizontal) {
-      _updateEdges(notification.metrics);
-    }
-    return false;
-  }
-
-  bool _onMetrics(ScrollMetricsNotification notification) {
-    if (notification.metrics.axis == Axis.horizontal) {
-      _updateEdges(notification.metrics);
-    }
-    return false;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final fadeFraction = width.isFinite && width > 0
-            ? (widget.fadeExtent / width).clamp(0.0, .16)
-            : 0.04;
-        return NotificationListener<ScrollMetricsNotification>(
-          onNotification: _onMetrics,
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _onScroll,
-            child: ClipRect(
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [
-                    _fadeStart ? Colors.transparent : Colors.white,
-                    Colors.white,
-                    Colors.white,
-                    _fadeEnd ? Colors.transparent : Colors.white,
-                  ],
-                  stops: [0, fadeFraction, 1 - fadeFraction, 1],
-                ).createShader(bounds),
-                child: widget.child,
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    // A ShaderMask over every horizontal shelf forces an extra compositing
+    // pass while the user is flinging through the Home feed. Keep the viewport
+    // clipped, but let the shelf remain a normal GPU-friendly scroll layer.
+    return ClipRect(child: child);
   }
 }
 
@@ -913,15 +845,6 @@ class _FocusableTapState extends State<FocusableTap> {
     // a second concurrent ensureVisible animation fights explicit grid scrolls
     // and can leave a lazy tile detached while it owns focus.
     if (!value || DeviceProfile.isTelevision) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-      );
-    });
   }
 
   static bool _isActivationKey(LogicalKeyboardKey key) =>
@@ -2233,11 +2156,7 @@ class PosterCard extends StatelessWidget {
       builder: (context, active) => _visual(context, active),
     );
     // Animate the first viewport, not an entire 50+ item result page at once.
-    if (index >= 12) return interactive;
-    return interactive
-        .animate()
-        .fadeIn(duration: 320.ms, delay: (index * 30).ms)
-        .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic);
+    return interactive;
   }
 
   Widget _visual(BuildContext context, bool active) {
