@@ -454,7 +454,7 @@ ThemeData buildTheme(Palette p) {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(lumenCorner(16)),
-        borderSide: BorderSide(color: p.accentInk, width: focusStyle.ringWidth),
+        borderSide: BorderSide(color: Colors.white, width: focusStyle.ringWidth),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(lumenCorner(16)),
@@ -475,7 +475,7 @@ ThemeData buildTheme(Palette p) {
       ),
     ),
     dividerTheme: DividerThemeData(color: p.line, thickness: 1),
-    progressIndicatorTheme: ProgressIndicatorThemeData(color: p.accentInk),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: Colors.white),
     textButtonTheme: TextButtonThemeData(
       style: ButtonStyle(
         foregroundColor: WidgetStateProperty.resolveWith(
@@ -573,10 +573,10 @@ ThemeData buildTheme(Palette p) {
         fontWeight: FontWeight.w700,
       ),
     ),
-    focusColor: p.accent.withValues(alpha: 0.30),
-    hoverColor: p.accent.withValues(alpha: 0.12),
-    splashColor: p.accent.withValues(alpha: 0.08),
-    highlightColor: p.accent.withValues(alpha: 0.05),
+    focusColor: Colors.white.withValues(alpha: 0.18),
+    hoverColor: Colors.white.withValues(alpha: 0.08),
+    splashColor: Colors.white.withValues(alpha: 0.06),
+    highlightColor: Colors.white.withValues(alpha: 0.04),
   );
 }
 
