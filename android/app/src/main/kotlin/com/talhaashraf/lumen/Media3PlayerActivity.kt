@@ -433,21 +433,10 @@ class Media3PlayerActivity : Activity() {
             setUseController(false)
             resizeMode = selectedResizeMode
             isFocusable = true
-            isClickable = true
             keepScreenOn = true
             setKeepContentOnPlayerReset(true)
             setOnFocusChangeListener { _, focused ->
                 if (focused && splitActive) selectSplitPane(0)
-            }
-            // The custom controller is intentionally owned by Lumen. A tap on
-            // the video surface must therefore wake it explicitly instead of
-            // relying on Media3's disabled built-in controller.
-            setOnClickListener {
-                if (controlsVisible) {
-                    hideControls(force = true)
-                } else {
-                    showControls()
-                }
             }
         }
         mainPane = FrameLayout(this).apply {
@@ -584,12 +573,9 @@ class Media3PlayerActivity : Activity() {
         updateFavoriteUi()
         updateTransportUi()
         open()
-        // Never start the native player with an invisible controller. The
-        // first frame and transport actions should be discoverable immediately,
-        // then auto-hide after the normal Netflix-style timeout.
-        showControls(requestTransportFocus = true)
         handler.post(watchdog)
         handler.post(progressUpdater)
+        playerView.requestFocus()
     }
 
     override fun onStop() {
@@ -805,7 +791,7 @@ class Media3PlayerActivity : Activity() {
             gravity = Gravity.CENTER
             clipChildren = false
             clipToPadding = false
-            background = roundedRect(0x73111511, 0x66FFFFFF, 1, 18)
+            background = roundedRect(0x73111511, 0x66FFFFFF.toInt(), 1, 18)
             setPadding(dp(5), dp(5), dp(5), dp(5))
             addView(previousButton, transportParams(dp(46), dp(46), margin = 3))
             addView(rewindButton, transportParams(dp(46), dp(46), margin = 3))
@@ -822,7 +808,7 @@ class Media3PlayerActivity : Activity() {
         setTextColor(0xFFE6EAE3.toInt())
         gravity = Gravity.CENTER
         setPadding(dp(16), dp(8), dp(16), dp(8))
-        background = roundedRect(0xD9111511.toInt(), 0x66FFFFFF, 1, 18)
+        background = roundedRect(0xD9111511.toInt(), 0x66FFFFFF.toInt(), 1, 18)
         visibility = View.GONE
         layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -860,7 +846,7 @@ class Media3PlayerActivity : Activity() {
         setPadding(dp(14), dp(9), dp(14), dp(9))
         background = roundedRect(
             0xD9111511.toInt(),
-            withAlpha(accentColor, 0x66),
+            0x66FFFFFF.toInt(),
             1,
             16
         )
@@ -1219,12 +1205,12 @@ class Media3PlayerActivity : Activity() {
     private fun buildSeekFeedback(): TextView = TextView(this).apply {
         textSize = 19f
         typeface = mediumTypeface
-        setTextColor(Color.WHITE)
+        setTextColor(accentColor)
         gravity = Gravity.CENTER
         setPadding(dp(20), dp(12), dp(20), dp(12))
         background = roundedRect(
             0xE6111511.toInt(),
-            0x99FFFFFF.toInt(),
+            withAlpha(accentColor, 0x99),
             1,
             24
         )
@@ -1568,9 +1554,9 @@ class Media3PlayerActivity : Activity() {
             ),
             intArrayOf(
                 0x667F877D,
-                Color.BLACK,
-                Color.BLACK,
-                if (prominent) Color.BLACK else Color.WHITE
+                onAccentColor(),
+                onAccentColor(),
+                if (prominent) accentColor else Color.WHITE
             )
         )
         isFocusable = true
@@ -1695,17 +1681,21 @@ class Media3PlayerActivity : Activity() {
         )
         addState(
             intArrayOf(android.R.attr.state_focused),
-            shape(Color.WHITE, Color.WHITE, 1)
+            shape(
+                accentColor,
+                Color.WHITE,
+                1
+            )
         )
         addState(
             intArrayOf(android.R.attr.state_pressed),
-            shape(0xFFE6E6E6.toInt(), Color.WHITE, 1)
+            shape(withAlpha(accentColor, 0xE6), Color.WHITE, 1)
         )
         addState(
             intArrayOf(),
             shape(
-                if (prominent) Color.WHITE else 0xD9111511.toInt(),
-                if (prominent) Color.WHITE else 0x99596157.toInt(),
+                0xD9111511.toInt(),
+                if (prominent) withAlpha(accentColor, 0x99) else 0x99596157.toInt(),
                 1
             )
         )
@@ -2624,7 +2614,7 @@ class Media3PlayerActivity : Activity() {
             setPadding(dp(24), dp(18), dp(24), dp(18))
             background = roundedRect(
                 0xEB111315.toInt(),
-                0x66FFFFFF,
+                0x66FFFFFF.toInt(),
                 1,
                 18
             )
