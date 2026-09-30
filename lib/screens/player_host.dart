@@ -1149,6 +1149,10 @@ class _PlayerHostState extends State<PlayerHost> {
     if (!_isAndroid || DeviceProfile.isTelevision || !pc.hasMedia) return;
     final current = pc.item;
     final position = pc.player?.state.position.inSeconds ?? 0;
+    // Release the MPV decoder before handing the same stream to Media3.
+    // Running both Android engines during the handoff can exhaust hardware
+    // decoder slots on some phones.
+    await pc.player?.pause();
     final opened = await AndroidCompatibilityPlayer.open(
       url: pc.activeSourceUrl,
       title: current.title,
