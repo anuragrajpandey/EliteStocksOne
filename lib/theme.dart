@@ -112,7 +112,7 @@ WidgetStateProperty<BorderSide?> lumenControlSide({
 }) => WidgetStateProperty.resolveWith((states) {
   if (states.contains(WidgetState.focused)) {
     return BorderSide(
-      color: focused ?? accentInk,
+      color: focused ?? Colors.white,
       width: activeFocusStyle.ringWidth,
     );
   }
