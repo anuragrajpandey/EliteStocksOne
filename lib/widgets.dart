@@ -163,6 +163,9 @@ class _RemoteFocusVisibilityState extends State<RemoteFocusVisibility> {
   }
 
   void _focusChanged() {
+    // Touch navigation on phones should never start an automatic scroll
+    // animation. Focus-follow scrolling is useful for remotes, not swipes.
+    if (DeviceProfile.isMobileApp) return;
     final node = FocusManager.instance.primaryFocus;
     if (node == null || identical(node, _last)) return;
     _last = node;
