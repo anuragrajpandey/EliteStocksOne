@@ -148,8 +148,6 @@ class _HomeScreenState extends State<HomeScreen>
   _HomeData? _visibleData;
   int _loadGeneration = 0;
   bool _coldRetryUsed = false;
-  Timer? _hourlyHomeRefreshTimer;
-  Timer? _dailyShelfRefreshTimer;
   final Map<String, FocusNode> _continueFocus = <String, FocusNode>{};
   final Map<String, FocusNode> _channelFocus = <String, FocusNode>{};
 
@@ -172,44 +170,14 @@ class _HomeScreenState extends State<HomeScreen>
     // was already available.
     _mobileHeroFuture = _bootstrapMobileHero();
     _beginLoad();
-    // The large hero is intentionally refreshed every hour.
-    _hourlyHomeRefreshTimer = Timer.periodic(
-      const Duration(hours: 1),
-      (_) {
-        if (mounted) refreshContent();
-      },
-    );
-    // The ten Home shelves use a slower playlist refresh cadence. This keeps
-    // their provider-backed categories stable during the day while allowing
-    // the playlist to rotate once every 24 hours.
-    _dailyShelfRefreshTimer = Timer.periodic(
-      const Duration(hours: 24),
-      (_) => _refreshMobileShelvesFromPlaylist(),
-    );
-    contentRefresh.addListener(_onRefresh);
   }
 
   @override
   void dispose() {
-    _hourlyHomeRefreshTimer?.cancel();
-    _dailyShelfRefreshTimer?.cancel();
-    contentRefresh.removeListener(_onRefresh);
     for (final node in [..._continueFocus.values, ..._channelFocus.values]) {
       node.dispose();
     }
     super.dispose();
-  }
-
-  void _onRefresh() {
-    if (!mounted) return;
-    // Keep the currently rendered catalogs in place while fresh data arrives.
-    // Pull-to-refresh should feel like an in-place update, not a cold launch.
-    setState(_beginLoad);
-  }
-
-  Future<void> _pullRefresh() async {
-    refreshContent(); // clears caches + bumps the notifier (reloads _future)
-    await _future;
   }
 
   Future<_HomeData> _loadHome() async {
@@ -529,20 +497,14 @@ class _HomeScreenState extends State<HomeScreen>
           // still be loading in the background, while the independent series
           // hero already has a chance to populate on first login.
           if (!isWide(context)) {
-            return RefreshIndicator(
-              onRefresh: _pullRefresh,
-              color: accentInk,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                padding: const EdgeInsets.only(bottom: 120),
-                children: [
-                  _searchBar(),
-                  const SizedBox(height: 8),
-                  _mobileHeroWidget(widget.client),
-                ],
-              ),
+            return ListView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 120),
+              children: [
+                _searchBar(),
+                const SizedBox(height: 8),
+                _mobileHeroWidget(widget.client),
+              ],
             );
           }
           return BrandedLoading();
@@ -589,25 +551,18 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
         if (isWide(context)) {
-          return RefreshIndicator(
-            onRefresh: _pullRefresh,
-            color: accentInk,
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: hero),
-                SliverToBoxAdapter(child: lastPlayed),
-                const SliverToBoxAdapter(child: SizedBox(height: 80)),
-              ],
-            ),
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: hero),
+              SliverToBoxAdapter(child: lastPlayed),
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
           );
         }
 
         final shelfCount = 4 + _mobileCuratedShelves.length;
 
-        return RefreshIndicator(
-          onRefresh: _pullRefresh,
-          color: accentInk,
-          child: ListView.builder(
+        return ListView.builder(
             key: const PageStorageKey<String>('mobile-home-scroll'),
             // Keep Android scrolling predictable and low-overhead. The
             // shelves already provide their own horizontal motion, so the
@@ -885,19 +840,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _refreshMobileShelvesFromPlaylist() async {
-    if (!mounted) return;
-    try {
-      // Reload the provider category lists on the 24-hour shelf cadence. The
-      // cache layer may serve the current snapshot immediately and refresh the
-      // provider-backed data without disturbing the hourly hero.
-      final data = await _loadHome();
-      if (!mounted) return;
-      setState(() => _prepareMobileShelves(data, updateHero: false));
-    } catch (_) {
-      // Keep the last usable shelves if the provider is temporarily offline.
-    }
-  }
 
   void _prepareMobileShelves(_HomeData data, {bool updateHero = true}) {
     final sources = _selectMobileCategories(data);
@@ -1086,56 +1028,44 @@ class _MobileHomeSpotlight extends StatefulWidget {
     required this.onMoviePlay,
     required this.onSeriesOpen,
   });
+
   final Future<List<_MobileFeature>> future;
   final ValueChanged<VodStream> onMoviePlay;
   final ValueChanged<Series> onSeriesOpen;
+
   @override
   State<_MobileHomeSpotlight> createState() => _MobileHomeSpotlightState();
 }
 
 class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
-  // Keep the PageView on a large circular track so the tenth card flows
-  // directly into the first instead of animating backwards across the list.
-  static const int _loopCenterPage = 50000;
-  final PageController _pageController = PageController(
-    initialPage: _loopCenterPage,
-  );
-  List<_MobileFeature> _items = const [];
-  int _index = 0;
+  _MobileFeature? _item;
+  bool _loaded = false;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _loadOnce();
   }
 
   @override
   void didUpdateWidget(covariant _MobileHomeSpotlight oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.future != widget.future) {
-      _items = const [];
-      _index = 0;
-      _load();
-    }
+    if (!_loaded && oldWidget.future != widget.future) _loadOnce();
   }
 
-  Future<void> _load() async {
+  Future<void> _loadOnce() async {
     try {
       final items = await widget.future;
-      if (!mounted) return;
+      if (!mounted || items.isEmpty || _loaded) return;
+      final selected = items[math.Random().nextInt(items.length)];
       setState(() {
-        _items = items.take(10).toList(growable: false);
-        _index = 0;
+        _item = selected;
+        _loaded = true;
       });
-      if (_pageController.hasClients) {
-        _pageController.jumpToPage(_loopCenterPage);
-      }
-
     } catch (_) {
-      if (mounted) setState(() => _items = const []);
+      if (mounted) setState(() => _loaded = true);
     }
   }
-
 
   void _activate(_MobileFeature item) {
     if (item.movie != null) {
@@ -1167,233 +1097,152 @@ class _MobileHomeSpotlightState extends State<_MobileHomeSpotlight> {
   }
 
   void _toggleFavorite(_MobileFeature item) {
-    final ref = _favoriteRef(item);
-    Library.instance.toggleFav(ref);
+    Library.instance.toggleFav(_favoriteRef(item));
     HapticFeedback.selectionClick();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty) {
+    final item = _item;
+    if (item == null) {
       return const SizedBox(
-        height: 420,
+        height: 470,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
+
     final width = MediaQuery.sizeOf(context).width - 32;
-    final height = (width * 1.28).clamp(360.0, 500.0);
+    final height = (width * 1.28).clamp(360.0, 520.0);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-      child: Column(
-        children: [
-          SizedBox(
-            height: height,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: PageView.builder(
-                controller: _pageController,
-                physics: const ClampingScrollPhysics(),
-                onPageChanged: (page) {
-                  if (!mounted || _items.isEmpty) return;
-                  setState(() => _index = page % _items.length);
-                },
-                itemCount: 100000,
-                itemBuilder: (_, index) {
-                  final item = _items[index % _items.length];
-                  return RepaintBoundary(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _activate(item),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          MediaImage(
-                            key: ValueKey(item.image),
-                            source: item.image,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                            memCacheWidth: (width * MediaQuery.devicePixelRatioOf(context))
-                                .round()
-                                .clamp(420, 1080),
-                            error: ColoredBox(color: surfaceHi),
-                          ),
-                          const DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Color(0x12000000),
-                                  Color(0x22000000),
-                                  Color(0xD9000000),
-                                ],
-                                stops: [0.25, 0.48, 1],
+      child: SizedBox(
+        height: height,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              MediaImage(
+                source: item.image,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                memCacheWidth: (width * MediaQuery.devicePixelRatioOf(context))
+                    .round()
+                    .clamp(420, 1080),
+                error: ColoredBox(color: surfaceHi),
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x10000000),
+                      Color(0x22000000),
+                      Color(0xE6000000),
+                    ],
+                    stops: [0.20, 0.52, 1],
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 18,
+                right: 18,
+                bottom: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.movie != null ? 'MOVIE' : 'TV SHOW',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 25,
+                        height: 1.02,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (item.tmdbYear.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        item.tmdbYear,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () => _activate(item),
+                            icon: Icon(
+                              item.movie != null
+                                  ? Icons.play_arrow_rounded
+                                  : Icons.info_outline_rounded,
+                              size: 20,
+                            ),
+                            label: Text(item.movie != null ? 'Play' : 'View'),
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(44),
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
                               ),
                             ),
                           ),
-                          Positioned(
-                            left: 18,
-                            right: 18,
-                            bottom: 18,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: accentInk,
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
-                                      child: Text(
-                                        item.movie != null ? 'MOVIE' : 'TV SHOW',
-                                        style: TextStyle(
-                                          color: foregroundFor(accentInk),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: .8,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (_year(item.title).isNotEmpty)
-                                      Text(
-                                        _year(item.title),
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 7),
-                                Text(
-                                  item.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 25,
-                                    height: 1.02,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                if (item.tmdbYear.isNotEmpty) ...[
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    item.tmdbYear,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 11),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: FilledButton.icon(
-                                        onPressed: () => _activate(item),
-                                        icon: Icon(
-                                          item.movie != null
-                                              ? Icons.play_arrow_rounded
-                                              : Icons.info_outline_rounded,
-                                          size: 20,
-                                        ),
-                                        label: Text(
-                                          item.movie != null ? 'Play' : 'View',
-                                        ),
-                                        style: FilledButton.styleFrom(
-                                          minimumSize: const Size.fromHeight(44),
-                                          backgroundColor: Colors.white,
-                                          foregroundColor: Colors.black,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(9),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    AnimatedBuilder(
-                                      animation: Library.instance,
-                                      builder: (context, _) {
-                                        final saved = Library.instance.isFav(
-                                          item.key,
-                                        );
-                                        return SizedBox(
-                                          width: 48,
-                                          height: 44,
-                                          child: FilledButton(
-                                            onPressed: () => _toggleFavorite(item),
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor: Colors.white
-                                                  .withValues(alpha: .18),
-                                              foregroundColor: Colors.white,
-                                              padding: EdgeInsets.zero,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(9),
-                                              ),
-                                            ),
-                                            child: AnimatedSwitcher(
-                                              duration: const Duration(
-                                                milliseconds: 180,
-                                              ),
-                                              transitionBuilder:
-                                                  (child, animation) =>
-                                                      ScaleTransition(
-                                                scale: CurvedAnimation(
-                                                  parent: animation,
-                                                  curve: Curves.easeOutBack,
-                                                ),
-                                                child: child,
-                                              ),
-                                              child: Icon(
-                                                saved
-                                                    ? Icons.check_rounded
-                                                    : Icons.add_rounded,
-                                                key: ValueKey(saved),
-                                                size: 24,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 48,
+                          height: 44,
+                          child: FilledButton(
+                            onPressed: () => _toggleFavorite(item),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(alpha: .16),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                side: const BorderSide(color: Colors.white24),
+                              ),
+                            ),
+                            child: AnimatedBuilder(
+                              animation: Library.instance,
+                              builder: (_, __) {
+                                final saved = Library.instance.isFav(item.key);
+                                return Icon(
+                                  saved ? Icons.check_rounded : Icons.add_rounded,
+                                  size: 24,
+                                );
+                              },
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(height: 9),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              10,
-              (i) => AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: i == _index ? 16 : 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: i == _index ? accent : muted.withValues(alpha: .55),
-                  borderRadius: BorderRadius.circular(4),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
