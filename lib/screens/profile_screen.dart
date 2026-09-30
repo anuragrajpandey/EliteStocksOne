@@ -1993,9 +1993,8 @@ class _FontSelectorState extends State<_FontSelector> {
         target ~/ _columns == index ~/ _columns;
     if (sameRow) {
       _focusNodes[target].requestFocus();
-    } else if (target < 0 &&
-        widget.leftExitFocusNode.canRequestFocus) {
-      widget.leftExitFocusNode.requestFocus();
+    } else if (target < 0) {
+      widget.leftExitFocusNode?.requestFocus();
     }
     return KeyEventResult.handled;
   }
