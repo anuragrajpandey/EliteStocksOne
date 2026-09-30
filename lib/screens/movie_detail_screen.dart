@@ -154,8 +154,8 @@ class _MovieDetailScreenState extends State<MovieDetailScreen> {
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: onAccent,
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
             ),
             child: const Text('Remove'),
           ),
