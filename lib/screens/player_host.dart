@@ -2357,6 +2357,7 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   Widget _topBar() {
+    final mobile = _isAndroid && !DeviceProfile.isTelevision;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -2367,83 +2368,88 @@ class _PlayerHostState extends State<PlayerHost> {
       ),
       child: SafeArea(
         bottom: false,
-        minimum: const EdgeInsets.only(left: 8, right: 16, top: 8, bottom: 8),
+        minimum: const EdgeInsets.fromLTRB(10, 8, 14, 8),
         child: Row(
           children: [
             IconButton(
-              onPressed: _minimize,
-              icon: const Icon(
-                Icons.keyboard_arrow_down_rounded,
+              tooltip: mobile ? 'Back' : 'Minimize player',
+              onPressed: mobile ? _close : _minimize,
+              icon: Icon(
+                mobile
+                    ? Icons.arrow_back_rounded
+                    : Icons.keyboard_arrow_down_rounded,
                 color: Colors.white,
-                size: 30,
+                size: 28,
               ),
             ),
-            if (_isLive)
-              Container(
-                margin: const EdgeInsets.only(right: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF3B5C),
-                  borderRadius: BorderRadius.circular(lumenCorner(8)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.circle,
-                      color: foregroundFor(const Color(0xFFFF3B5C)),
-                      size: 7,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      'LIVE',
-                      style: TextStyle(
-                        color: foregroundFor(const Color(0xFFFF3B5C)),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+            Expanded(
+              child: Center(
+                child: Text(
+                  _item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    shadows: [Shadow(color: Colors.black, blurRadius: 8)],
+                  ),
                 ),
               ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      shadows: [Shadow(color: Colors.black, blurRadius: 8)],
+            ),
+            if (mobile)
+              IconButton(
+                tooltip: _controlsLocked ? 'Unlock controls' : 'Lock controls',
+                onPressed: _toggleControlsLock,
+                icon: Icon(
+                  _controlsLocked
+                      ? Icons.lock_rounded
+                      : Icons.lock_outline_rounded,
+                  color: Colors.white,
+                  size: 25,
+                ),
+              )
+            else ...[
+              if (_isLive)
+                Container(
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF3B5C),
+                    borderRadius: BorderRadius.circular(lumenCorner(8)),
+                  ),
+                  child: const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: .5,
                     ),
                   ),
-                ],
+                ),
+              if (_item.favRef != null)
+                AnimatedBuilder(
+                  animation: Library.instance,
+                  builder: (_, __) {
+                    final fav = Library.instance.isFav(_item.favRef!.key);
+                    return IconButton(
+                      onPressed: () =>
+                          Library.instance.toggleFav(_item.favRef!),
+                      icon: Icon(
+                        fav
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        color: Colors.white,
+                      ),
+                    );
+                  },
+                ),
+              IconButton(
+                tooltip: 'Close',
+                onPressed: _close,
+                icon: const Icon(Icons.close_rounded, color: Colors.white),
               ),
-            ),
-            if (_item.favRef != null)
-              AnimatedBuilder(
-                animation: Library.instance,
-                builder: (_, __) {
-                  final fav = Library.instance.isFav(_item.favRef!.key);
-                  return IconButton(
-                    onPressed: () => Library.instance.toggleFav(_item.favRef!),
-                    icon: Icon(
-                      fav
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: Colors.white,
-                    ),
-                  );
-                },
-              ),
-            IconButton(
-              onPressed: _close,
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-            ),
+            ],
           ],
         ),
       ),
@@ -2458,14 +2464,7 @@ class _PlayerHostState extends State<PlayerHost> {
         color: Colors.black.withValues(alpha: 0.48),
         borderRadius: BorderRadius.circular(lumenCorner(999)),
         border: Border.all(color: Colors.white24),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black38,
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
+              ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -2639,6 +2638,33 @@ class _PlayerHostState extends State<PlayerHost> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final compact = constraints.maxWidth < 520;
+                if (_isAndroid && !DeviceProfile.isTelevision && !_isDesktop) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _mobilePlayerAction(
+                        Icons.speed_rounded,
+                        'Speed (' + (_rate == _rate.roundToDouble()
+                            ? _rate.toInt().toString()
+                            : _rate.toString()) + 'x)',
+                        _openSettings,
+                      ),
+                      const SizedBox(width: 18),
+                      _mobilePlayerAction(
+                        Icons.closed_caption_outlined,
+                        'Audio & Subtitles',
+                        _pickSubtitles,
+                      ),
+                      const SizedBox(width: 18),
+                      _mobilePlayerAction(
+                        Icons.swap_horiz_rounded,
+                        'EXO',
+                        _switchToExo,
+                      ),
+                    ],
+                  );
+                }
+
                 return Row(
                   children: [
                     _bottomIcon(
@@ -2730,6 +2756,31 @@ class _PlayerHostState extends State<PlayerHost> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mobilePlayerAction(
+    IconData icon,
+    String label,
+    VoidCallback onPressed,
+  ) {
+    return TextButton.icon(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: Icon(icon, size: 18, color: Colors.white),
+      label: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
