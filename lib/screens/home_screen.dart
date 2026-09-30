@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/services.dart';
-import 'dart:async';
 import 'dart:math' as math;
 import '../catalog_cache.dart';
 import '../device_profile.dart';
@@ -9,7 +8,6 @@ import '../focus_return.dart';
 import '../library.dart';
 import '../models.dart';
 import '../playback.dart';
-import '../refresh.dart';
 import '../responsive.dart';
 import '../theme.dart';
 import '../tmdb.dart';
@@ -425,7 +423,6 @@ class _HomeScreenState extends State<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 primary: false,
                 physics: const ClampingScrollPhysics(),
-                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: DeviceProfile.isTelevision ? 28 : 20,
@@ -461,7 +458,6 @@ class _HomeScreenState extends State<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 primary: false,
                 physics: const ClampingScrollPhysics(),
-                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: EdgeInsets.symmetric(
                   horizontal: DeviceProfile.isTelevision ? 28 : 20,
@@ -982,7 +978,6 @@ class _HomeScreenState extends State<HomeScreen>
                 scrollDirection: Axis.horizontal,
                 primary: false,
                 physics: const ClampingScrollPhysics(),
-                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -1919,7 +1914,6 @@ class _SpotlightHeroState extends State<_SpotlightHero> {
                 scrollDirection: Axis.horizontal,
                 primary: false,
                 physics: const ClampingScrollPhysics(),
-                dragStartBehavior: DragStartBehavior.down,
                 clipBehavior: Clip.none,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
