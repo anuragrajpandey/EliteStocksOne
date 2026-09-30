@@ -176,8 +176,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   Expanded(
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        backgroundColor: accent,
-                        foregroundColor: onAccent,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(lumenCorner(14)),
