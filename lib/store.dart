@@ -213,17 +213,33 @@ class Store {
   }
 
   static Future<void> logout() async {
+    // Capture the saved service scopes before setting the signed-out tombstone.
+    // Logout must remove the local catalog itself, not merely the credential.
+    final profiles = await savedProfiles();
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(_kSignedOut, true);
-    // The marker above is the source of truth. Remove the encrypted payload as
-    // best-effort cleanup without holding the UI on a loader.
-    unawaited(
-      _delete(_kActive).timeout(const Duration(seconds: 3)).catchError((
-        Object error,
-      ) {
-        debugPrint('Secure credential cleanup was deferred: $error');
-      }),
-    );
+
+    for (final profile in profiles) {
+      await CatalogStore.instance.deleteProfile(profileScope(profile));
+    }
+    if (profiles.isNotEmpty) {
+      await CatalogStore.instance.deleteProfile(
+        combinedCatalogScope(profiles),
+      );
+    }
+
+    // Remove private account-owned library state and the active credential.
+    for (final profile in profiles) {
+      for (final key in _profileStateKeys) {
+        await deletePrivate(scopedKey(key, profile));
+      }
+    }
+    await _delete(_kActive).timeout(const Duration(seconds: 3)).catchError((
+      Object error,
+    ) {
+      debugPrint('Secure credential cleanup was deferred: $error');
+    });
+    await preferences.remove('catalog_preload_complete');
   }
 
   static Future<List<XtreamCredentials>> removeProfile(
