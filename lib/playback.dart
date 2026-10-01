@@ -97,14 +97,14 @@ class PlaybackBufferPolicy {
   // `bufferSize` is the demuxer's forward-memory ceiling. 128 MiB is large
   // enough to hold a useful cushion for high-bitrate VOD without creating an
   // unbounded cache. Android TV uses the separately bounded Media3 profile.
-  static const maxMemoryBytes = 128 * 1024 * 1024;
+  static const maxMemoryBytes = 64 * 1024 * 1024;
 
   // Do not let already-played packets consume the forward-buffer budget. A
   // small back buffer is still useful for quick backwards seeks.
-  static const maxBackBufferBytes = 16 * 1024 * 1024;
+  static const maxBackBufferBytes = 8 * 1024 * 1024;
 
-  static const vodAhead = Duration(seconds: 90);
-  static const vodResume = Duration(seconds: 15);
+  static const vodAhead = Duration(seconds: 30);
+  static const vodResume = Duration(seconds: 5);
 
   static Duration aheadFor(bool live, {PlaybackMode? mode}) {
     if (!live) return vodAhead;
