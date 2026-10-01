@@ -222,6 +222,7 @@ class _PlayerHostState extends State<PlayerHost> {
   bool _fullscreen = false;
   bool _muted = false;
   bool _controlsLocked = false;
+  bool _speedOverlayVisible = false;
   Timer? _hideTimer;
   Timer? _lockButtonTimer;
   bool _lockedButtonVisible = false;
@@ -1041,7 +1042,7 @@ class _PlayerHostState extends State<PlayerHost> {
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
+    _hideTimer = Timer(const Duration(seconds: 5), () {
       if (mounted &&
           !pc.minimized &&
           playerControlsCanAutoHide(
@@ -1059,7 +1060,7 @@ class _PlayerHostState extends State<PlayerHost> {
     if (!_controlsLocked || DeviceProfile.isTelevision || _isDesktop) return;
     _lockButtonTimer?.cancel();
     if (mounted) setState(() => _lockedButtonVisible = true);
-    _lockButtonTimer = Timer(const Duration(seconds: 3), () {
+    _lockButtonTimer = Timer(const Duration(seconds: 5), () {
       if (mounted && _controlsLocked) {
         setState(() => _lockedButtonVisible = false);
       }
@@ -1067,6 +1068,7 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   void _tap() {
+    if (_speedOverlayVisible) _speedOverlayVisible = false;
     if (_controlsLocked) {
       // While locked, tapping the video never changes playback controls.
       // It only reveals the unlock affordance briefly.
@@ -1075,6 +1077,15 @@ class _PlayerHostState extends State<PlayerHost> {
     }
     setState(() => _controls = !_controls);
     if (_controls) _scheduleHide();
+  }
+
+  void _toggleSpeedOverlay() {
+    if (_isLive || _controlsLocked) return;
+    setState(() {
+      _speedOverlayVisible = !_speedOverlayVisible;
+      _controls = true;
+    });
+    _scheduleHide();
   }
 
   void _toggleControlsLock() {
@@ -1336,6 +1347,70 @@ class _PlayerHostState extends State<PlayerHost> {
                   child: ExcludeFocus(
                     excluding: !_controls,
                     child: IgnorePointer(ignoring: !_controls, child: _overlay()),
+                  ),
+                ),
+              if (_speedOverlayVisible && _controls && !_isLive && !_controlsLocked)
+                Positioned(
+                  left: 20,
+                  right: 20,
+                  bottom: 126,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 620),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.78),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: Colors.white,
+                                inactiveTrackColor: Colors.white38,
+                                thumbColor: Colors.white,
+                                overlayColor: Colors.white12,
+                                trackHeight: 5,
+                              ),
+                              child: Slider(
+                                min: 0.5,
+                                max: 1.5,
+                                divisions: 4,
+                                value: _rate.clamp(0.5, 1.5),
+                                onChanged: (value) {
+                                  final rate = (value * 4).round() / 4;
+                                  pc.player!.setRate(rate);
+                                  setState(() => _rate = rate);
+                                  _scheduleHide();
+                                },
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                for (final rate in const [0.5, 0.75, 1.0, 1.25, 1.5])
+                                  Text(
+                                    '${rate}x',
+                                    style: TextStyle(
+                                      color: _rate == rate ? Colors.white : Colors.white70,
+                                      fontWeight: _rate == rate ? FontWeight.w800 : FontWeight.w400,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _rate == 1 ? 'Normal' : '${_rate}x speed',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               // Connecting, reconnecting, and ordinary buffering share one
@@ -2717,29 +2792,26 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   Widget _lockedControlsButton() {
-    return Positioned(
-      left: 12,
-      bottom: 12,
+    return Positioned.fill(
       child: SafeArea(
-        top: false,
-        child: TextButton.icon(
-          onPressed: _toggleControlsLock,
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            backgroundColor: Colors.black.withValues(alpha: 0.64),
-            side: const BorderSide(color: Colors.white24),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          icon: const Icon(Icons.lock_open_rounded, size: 21),
-          label: const Text(
-            'Unlock',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
+        child: Center(
+          child: GestureDetector(
+            onTap: _toggleControlsLock,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 76,
+                  height: 76,
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.lock_outline_rounded, color: Colors.black, size: 34),
+                ),
+                const SizedBox(height: 14),
+                const Text('Screen Locked', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                const Text('Tap to Unlock', style: TextStyle(color: Colors.white70, fontSize: 16)),
+              ],
             ),
           ),
         ),
