@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import '../catalog_cache.dart';
@@ -9,6 +10,7 @@ import '../library.dart';
 import '../models.dart';
 import '../playback.dart';
 import '../responsive.dart';
+import '../refresh.dart';
 import '../theme.dart';
 import '../tmdb.dart';
 import '../widgets.dart';
@@ -636,7 +638,7 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               );
             },
-          ),
+          },
         );
       },
     );
