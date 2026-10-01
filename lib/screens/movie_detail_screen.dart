@@ -712,9 +712,9 @@ class _PrimaryPlay extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 156),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 15),
       decoration: BoxDecoration(
-        color: accent,
+        color: Colors.white.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(lumenCorner(14)),
-        boxShadow: glow(accent, blur: 24, y: 9, a: .42),
+        border: Border.all(color: Colors.white24),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -722,12 +722,12 @@ class _PrimaryPlay extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.play_arrow_rounded, color: onAccent, size: 23),
+              Icon(Icons.play_arrow_rounded, color: Colors.white, size: 23),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: onAccent,
+                  color: Colors.white,
                   fontWeight: FontWeight.w800,
                   fontSize: 15,
                 ),
@@ -741,8 +741,8 @@ class _PrimaryPlay extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 2,
-                backgroundColor: onAccent.withValues(alpha: .28),
-                valueColor: AlwaysStoppedAnimation(onAccent),
+                backgroundColor: Colors.white24,
+                valueColor: const AlwaysStoppedAnimation(Colors.white),
               ),
             ),
           ],
