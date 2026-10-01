@@ -344,7 +344,7 @@ class CatalogLoadingScreen extends StatelessWidget {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(99),
                               child: LinearProgressIndicator(
-                                value: progress.percent.clamp(0.0, 1.0),
+                                value: progress.percent.clamp(0.0, 1.0).toDouble(),
                                 minHeight: 8,
                                 color: Colors.white,
                                 backgroundColor: Colors.white12,
