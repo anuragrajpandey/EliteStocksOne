@@ -2,6 +2,7 @@ package com.talhaashraf.lumen
 
 import android.Manifest
 import android.content.Intent
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.PictureInPictureParams
 import android.app.UiModeManager
