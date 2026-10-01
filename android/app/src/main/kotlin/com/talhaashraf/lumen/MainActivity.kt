@@ -26,17 +26,14 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "lumen/pip"
-    private val media3ChannelName = "lumen/media3"
     private val deviceChannelName = "lumen/device"
     private val subtitleChannelName = "lumen/subtitles"
     private val tvTextInputChannelName = "lumen/tv_text_input"
     private val downloadsChannelName = "lumen/downloads"
     private val subtitleRequestCode = 6204
-    private val media3RequestCode = 6206
     private var pipAllowed = false
     private var methodChannel: MethodChannel? = null
     private var pendingSubtitleResult: MethodChannel.Result? = null
-    private var pendingMedia3Result: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -54,137 +51,6 @@ class MainActivity : FlutterActivity() {
                         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                         packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
                 )
-                else -> result.notImplemented()
-            }
-        }
-        MethodChannel(
-            flutterEngine.dartExecutor.binaryMessenger,
-            media3ChannelName
-        ).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "isSupported" -> result.success(true)
-                "open" -> {
-                    if (pendingMedia3Result != null) {
-                        result.error(
-                            "player_busy",
-                            "The television player is already open.",
-                            null
-                        )
-                        return@setMethodCallHandler
-                    }
-                    val args = call.arguments as? Map<*, *>
-                    val url = args?.get("url") as? String
-                    if (url.isNullOrBlank()) {
-                        result.success(false)
-                        return@setMethodCallHandler
-                    }
-                    val headers = HashMap<String, String>()
-                    (args["headers"] as? Map<*, *>)?.forEach { (key, value) ->
-                        if (key is String && value is String) headers[key] = value
-                    }
-                    val playlistUrls = ArrayList<String>()
-                    val playlistAlternateUrls = ArrayList<String>()
-                    val playlistTitles = ArrayList<String>()
-                    val playlistFavoriteKeys = ArrayList<String>()
-                    val playlistFavoriteStates = ArrayList<Boolean>()
-                    val playlistProgressKeys = ArrayList<String>()
-                    val playlistPosters = ArrayList<String>()
-                    val playlistExtensions = ArrayList<String>()
-                    val playlistResumePositionsMs = ArrayList<Long>()
-                    (args["playlist"] as? List<*>)?.forEach { rawItem ->
-                        val item = rawItem as? Map<*, *> ?: return@forEach
-                        val itemUrl = item["url"] as? String
-                        if (!itemUrl.isNullOrBlank()) {
-                            playlistUrls.add(itemUrl)
-                            playlistAlternateUrls.add(
-                                item["alternateUrl"] as? String ?: ""
-                            )
-                            playlistTitles.add(item["title"] as? String ?: "")
-                            playlistFavoriteKeys.add(
-                                item["favoriteKey"] as? String ?: ""
-                            )
-                            playlistFavoriteStates.add(
-                                item["favorite"] as? Boolean ?: false
-                            )
-                            playlistProgressKeys.add(
-                                item["progressKey"] as? String ?: ""
-                            )
-                            playlistPosters.add(item["poster"] as? String ?: "")
-                            playlistExtensions.add(item["ext"] as? String ?: "")
-                            playlistResumePositionsMs.add(
-                                (item["resumePositionMs"] as? Number)?.toLong() ?: 0L
-                            )
-                        }
-                    }
-                    val intent = Intent(this, Media3PlayerActivity::class.java).apply {
-                        putExtra(Media3PlayerActivity.EXTRA_URL, url)
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_TITLE,
-                            args["title"] as? String ?: ""
-                        )
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_IS_LIVE,
-                            args["isLive"] as? Boolean ?: false
-                        )
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_PLAYBACK_MODE,
-                            args["playbackMode"] as? String ?: "balanced"
-                        )
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_ACCENT_COLOR,
-                            (args["accentColor"] as? Number)?.toLong()?.toInt()
-                                ?: 0xFFC7F36B.toInt()
-                        )
-                        putExtra(Media3PlayerActivity.EXTRA_HEADERS, headers)
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_URLS,
-                            playlistUrls
-                        )
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_ALTERNATE_URLS,
-                            playlistAlternateUrls
-                        )
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_TITLES,
-                            playlistTitles
-                        )
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_FAVORITE_KEYS,
-                            playlistFavoriteKeys
-                        )
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_FAVORITE_STATES,
-                            playlistFavoriteStates.toBooleanArray()
-                        )
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_PROGRESS_KEYS,
-                            playlistProgressKeys
-                        )
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_POSTERS,
-                            playlistPosters
-                        )
-                        putStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_EXTENSIONS,
-                            playlistExtensions
-                        )
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_RESUME_POSITIONS_MS,
-                            playlistResumePositionsMs.toLongArray()
-                        )
-                        putExtra(
-                            Media3PlayerActivity.EXTRA_INITIAL_INDEX,
-                            (args["initialIndex"] as? Number)?.toInt() ?: 0
-                        )
-                    }
-                    pendingMedia3Result = result
-                    try {
-                        startActivityForResult(intent, media3RequestCode)
-                    } catch (error: Exception) {
-                        pendingMedia3Result = null
-                        result.success(false)
-                    }
-                }
                 else -> result.notImplemented()
             }
         }
