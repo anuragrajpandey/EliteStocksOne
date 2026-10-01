@@ -986,18 +986,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: accentInk.withValues(alpha: isDark ? 0.12 : 0.10),
+                      color: Colors.white.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(lumenCorner(11)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add_rounded, size: 17, color: accentInk),
+                        Icon(Icons.add_rounded, size: 17, color: Colors.white),
                         const SizedBox(width: 4),
                         Text(
                           'Add',
                           style: TextStyle(
-                            color: accentInk,
+                            color: Colors.white,
                             fontWeight: FontWeight.w800,
                             fontSize: 12,
                           ),
