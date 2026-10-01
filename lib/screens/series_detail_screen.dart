@@ -703,7 +703,7 @@ class _SeriesAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final filled = primary || selected;
-    final foreground = filled ? onAccent : textHi;
+    final foreground = Colors.white;
     return Opacity(
       opacity: onTap == null ? .55 : 1,
       child: RemoteTap(
@@ -712,11 +712,10 @@ class _SeriesAction extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
           decoration: BoxDecoration(
             color: filled
-                ? accent
-                : surface.withValues(alpha: isDark ? .82 : .92),
+                ? Colors.white.withValues(alpha: .12)
+                : Colors.white.withValues(alpha: .06),
             borderRadius: BorderRadius.circular(lumenCorner(14)),
-            border: Border.all(color: filled ? Colors.transparent : line),
-            boxShadow: primary ? glow(accent, blur: 22, y: 8, a: .38) : null,
+            border: Border.all(color: Colors.white24),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
