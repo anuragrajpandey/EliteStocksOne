@@ -1467,13 +1467,14 @@ class LumenEmptyState extends StatelessWidget {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: accent,
+                        color: Colors.white.withValues(alpha: .10),
                         borderRadius: BorderRadius.circular(lumenCorner(14)),
+                        border: Border.all(color: Colors.white24),
                       ),
                       child: Text(
                         actionLabel!,
                         style: TextStyle(
-                          color: onAccent,
+                          color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -2273,14 +2274,14 @@ class PosterCard extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: accent,
+                      color: Colors.white.withValues(alpha: .14),
                       shape: BoxShape.circle,
-                      boxShadow: glow(accent),
+                      border: Border.all(color: Colors.white24),
                     ),
                     alignment: Alignment.center,
                     child: Icon(
                       Icons.play_arrow_rounded,
-                      color: onAccent,
+                      color: Colors.white,
                       size: 25,
                     ),
                   ),
