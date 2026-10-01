@@ -72,6 +72,8 @@ jobs:
 
       - name: Build APK
         if: inputs.build_type == 'apk'
+        env:
+          ORG_GRADLE_PROJECT_lumenCommunityBuild: 'true'
         run: |
           for attempt in 1 2 3; do
             if flutter build apk --release \
@@ -86,10 +88,12 @@ jobs:
 
       - name: Build Android App Bundle
         if: inputs.build_type == 'aab'
-        run: flutter build app"bundle" --release --build-number=${{ github.run_number }} --dart-define=APP_BUILD=${{ github.run_number }}
+        run: flutter build appbundle --release --build-number=${{ github.run_number }} --dart-define=APP_BUILD=${{ github.run_number }}
 
       - name: Verify APK
         if: inputs.build_type == 'apk'
+        env:
+          ORG_GRADLE_PROJECT_lumenCommunityBuild: 'true'
         shell: bash
         run: |
           apk="build/app/outputs/flutter-apk/app-release.apk"
@@ -99,6 +103,9 @@ jobs:
           test -n "$apksigner"
 
           "$apksigner" verify --verbose --print-certs "$apk"
+
+          build_tools_dir="$(dirname "$apksigner")"
+          "$build_tools_dir/aapt" dump badging "$apk" | grep "package: name='com.talhaashraf.lumen.community'"
 
       - name: Upload APK
         if: inputs.build_type == 'apk'
