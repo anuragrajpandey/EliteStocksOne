@@ -706,9 +706,9 @@ class PlaybackController extends ChangeNotifier {
     if (newItems.isEmpty) return;
     if (captureReturnFocus) _returnFocus.capture();
     final safeIndex = i.clamp(0, newItems.length - 1);
-    // Mobile defaults to the embedded mpv engine. Android Media3/Exo is
-    // still available as an explicit switch from the player controls. TVs
-    // keep the native Media3 surface as their primary path.
+    // Mobile playback stays on the embedded MPV engine. TVs use the native
+    // Android surface internally for compositor stability; there is no
+    // user-facing engine switch.
     if (AndroidCompatibilityPlayer.isAvailable && DeviceProfile.isTelevision) {
       _openNativeAndroid(newItems, safeIndex);
       return;
