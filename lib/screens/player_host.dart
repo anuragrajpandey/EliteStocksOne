@@ -1379,7 +1379,7 @@ class _PlayerHostState extends State<PlayerHost> {
                                 min: 0.5,
                                 max: 1.5,
                                 divisions: 4,
-                                value: _rate.clamp(0.5, 1.5),
+                                value: _rate.clamp(0.5, 1.5).toDouble(),
                                 onChanged: (value) {
                                   final rate = (value * 4).round() / 4;
                                   pc.player!.setRate(rate);
@@ -1393,7 +1393,7 @@ class _PlayerHostState extends State<PlayerHost> {
                               children: [
                                 for (final rate in const [0.5, 0.75, 1.0, 1.25, 1.5])
                                   Text(
-                                    '${rate}x',
+                                    '${rate == rate.roundToDouble() ? rate.toInt() : rate}x',
                                     style: TextStyle(
                                       color: _rate == rate ? Colors.white : Colors.white70,
                                       fontWeight: _rate == rate ? FontWeight.w800 : FontWeight.w400,
