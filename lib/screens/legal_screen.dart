@@ -84,8 +84,8 @@ class _LegalWelcomeScreenState extends State<LegalWelcomeScreen> {
                             autofocus: true,
                             onPressed: _busy ? null : _accept,
                             style: FilledButton.styleFrom(
-                              backgroundColor: accent,
-                              foregroundColor: bg,
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
                             child: _busy
@@ -94,7 +94,7 @@ class _LegalWelcomeScreenState extends State<LegalWelcomeScreen> {
                                     height: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: bg,
+                                      color: Colors.black,
                                     ),
                                   )
                                 : const Text('I understand and agree'),
