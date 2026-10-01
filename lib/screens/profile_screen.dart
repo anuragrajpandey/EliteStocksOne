@@ -1321,18 +1321,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ],
   );
 
-  Widget _controlHeading(String title, String subtitle) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        title,
-        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800),
-      ),
-      const SizedBox(height: 3),
-      Text(subtitle, style: TextStyle(color: subtle, fontSize: 11.5)),
-    ],
-  );
-
   Widget _actionRow({
     FocusNode? focusNode,
     FocusOnKeyEventCallback? onKeyEvent,
@@ -1994,7 +1982,7 @@ class _FontSelectorState extends State<_FontSelector> {
     if (sameRow) {
       _focusNodes[target].requestFocus();
     } else if (target < 0) {
-      widget.leftExitFocusNode?.requestFocus();
+      widget.leftExitFocusNode.requestFocus();
     }
     return KeyEventResult.handled;
   }
