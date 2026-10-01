@@ -869,6 +869,18 @@ class CatalogCache {
     XtreamClient client, {
     required void Function(CatalogPreloadProgress progress) onProgress,
   }) async {
+    if (CatalogStore.instance.isDisabledForWidgetTests) {
+      onProgress(
+        const CatalogPreloadProgress(
+          stage: 'Library ready',
+          percent: 1,
+          movies: 0,
+          series: 0,
+          live: 0,
+        ),
+      );
+      return;
+    }
     _ensureOwner(client);
     final scope = client.catalogScope;
     var movieCount = 0;
