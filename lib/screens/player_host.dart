@@ -2699,9 +2699,14 @@ class _PlayerHostState extends State<PlayerHost> {
       onPressed: onPressed,
       style: TextButton.styleFrom(
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        backgroundColor: Colors.white.withValues(alpha: 0.08),
+        side: const BorderSide(color: Colors.white24),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
       icon: Icon(icon, size: 18, color: Colors.white),
       label: Text(
@@ -2749,6 +2754,14 @@ class _PlayerHostState extends State<PlayerHost> {
     constraints: BoxConstraints.tightFor(
       width: compact ? 40 : 48,
       height: compact ? 40 : 48,
+    ),
+    style: IconButton.styleFrom(
+      foregroundColor: Colors.white,
+      backgroundColor: Colors.white.withValues(alpha: 0.07),
+      side: const BorderSide(color: Colors.white12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
     ),
     icon: Icon(icon, color: Colors.white, size: compact ? 24 : 26),
   );
