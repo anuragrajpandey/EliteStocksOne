@@ -865,6 +865,12 @@ class CatalogCache {
     return raw == null ? null : DateTime.fromMillisecondsSinceEpoch(raw);
   }
 
+  Future<void> clearPreloadMarker(XtreamClient client) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_preloadKey(client));
+  }
+
+
   Future<void> preloadAll(
     XtreamClient client, {
     required void Function(CatalogPreloadProgress progress) onProgress,
