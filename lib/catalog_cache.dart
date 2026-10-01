@@ -826,6 +826,266 @@ class CatalogCache {
           );
   }
 
+
+  /// Progress reported while a complete provider catalog is being staged.
+  ///
+  /// Counts are the number of records fetched into the local catalog index.
+  /// The index is written per category, so a large provider never needs to
+  /// keep the complete library in Dart memory at once.
+  Future<void> preloadAll(
+    XtreamClient client, {
+    required void Function(CatalogPreloadProgress progress) onProgress,
+  }) async {
+    _ensureOwner(client);
+    final scope = client.catalogScope;
+    const kinds = <String>['movie', 'series', 'live'];
+    var movieCount = 0;
+    var seriesCount = 0;
+    var liveCount = 0;
+
+    onProgress(
+      CatalogPreloadProgress(
+        stage: 'Preparing your library',
+        percent: 0,
+        movies: 0,
+        series: 0,
+        live: 0,
+      ),
+    );
+
+    final movieCategories = await _refreshPreloadCategories(
+      client,
+      'movie',
+      client.vodCategories,
+    );
+    await _preloadVod(
+      client,
+      scope,
+      movieCategories,
+      onProgress: (done, total, count) {
+        movieCount = count;
+        onProgress(
+          CatalogPreloadProgress(
+            stage: 'Loading movies',
+            percent: 0.05 + (done / total.clamp(1, 1 << 30)) * 0.28,
+            movies: movieCount,
+            series: seriesCount,
+            live: liveCount,
+          ),
+        );
+      },
+    );
+
+    final seriesCategories = await _refreshPreloadCategories(
+      client,
+      'series',
+      client.seriesCategories,
+    );
+    await _preloadSeries(
+      client,
+      scope,
+      seriesCategories,
+      onProgress: (done, total, count) {
+        seriesCount = count;
+        onProgress(
+          CatalogPreloadProgress(
+            stage: 'Loading shows',
+            percent: 0.35 + (done / total.clamp(1, 1 << 30)) * 0.30,
+            movies: movieCount,
+            series: seriesCount,
+            live: liveCount,
+          ),
+        );
+      },
+    );
+
+    final liveCategories = await _refreshPreloadCategories(
+      client,
+      'live',
+      client.liveCategories,
+    );
+    await _preloadLive(
+      client,
+      scope,
+      liveCategories,
+      onProgress: (done, total, count) {
+        liveCount = count;
+        onProgress(
+          CatalogPreloadProgress(
+            stage: 'Loading TV channels',
+            percent: 0.65 + (done / total.clamp(1, 1 << 30)) * 0.33,
+            movies: movieCount,
+            series: seriesCount,
+            live: liveCount,
+          ),
+        );
+      },
+    );
+
+    revision.value++;
+    onProgress(
+      CatalogPreloadProgress(
+        stage: 'Library ready',
+        percent: 1,
+        movies: movieCount,
+        series: seriesCount,
+        live: liveCount,
+      ),
+    );
+  }
+
+  Future<List<Category>> _refreshPreloadCategories(
+    XtreamClient client,
+    String kind,
+    Future<List<Category>> Function() fetch,
+  ) async {
+    final categories = await fetch();
+    await CatalogStore.instance.replaceCategories(
+      client.catalogScope,
+      kind,
+      categories,
+      generation: _generation(),
+    );
+    return categories;
+  }
+
+  Future<void> _preloadVod(
+    XtreamClient client,
+    String scope,
+    List<Category> categories, {
+    required void Function(int done, int total, int count) onProgress,
+  }) async {
+    if (categories.isEmpty) {
+      final items = await client.vodStreams(null);
+      if (items.isNotEmpty) {
+        await CatalogStore.instance.replaceVod(
+          scope,
+          '*',
+          items,
+          generation: _generation(),
+        );
+      }
+      onProgress(1, 1, items.length);
+      return;
+    }
+    var count = 0;
+    const batchSize = 3;
+    for (var start = 0; start < categories.length; start += batchSize) {
+      final batch = categories.skip(start).take(batchSize).toList();
+      final results = await Future.wait(
+        batch.map((category) async {
+          final items = await client.vodStreams(category.id);
+          await CatalogStore.instance.replaceVod(
+            scope,
+            category.id,
+            items,
+            generation: _generation(),
+          );
+          return items.length;
+        }),
+      );
+      count += results.fold<int>(0, (sum, value) => sum + value);
+      onProgress(
+        (start + batch.length).clamp(0, categories.length),
+        categories.length,
+        count,
+      );
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
+  Future<void> _preloadSeries(
+    XtreamClient client,
+    String scope,
+    List<Category> categories, {
+    required void Function(int done, int total, int count) onProgress,
+  }) async {
+    if (categories.isEmpty) {
+      final items = await client.series(null);
+      if (items.isNotEmpty) {
+        await CatalogStore.instance.replaceSeries(
+          scope,
+          '*',
+          items,
+          generation: _generation(),
+        );
+      }
+      onProgress(1, 1, items.length);
+      return;
+    }
+    var count = 0;
+    const batchSize = 3;
+    for (var start = 0; start < categories.length; start += batchSize) {
+      final batch = categories.skip(start).take(batchSize).toList();
+      final results = await Future.wait(
+        batch.map((category) async {
+          final items = await client.series(category.id);
+          await CatalogStore.instance.replaceSeries(
+            scope,
+            category.id,
+            items,
+            generation: _generation(),
+          );
+          return items.length;
+        }),
+      );
+      count += results.fold<int>(0, (sum, value) => sum + value);
+      onProgress(
+        (start + batch.length).clamp(0, categories.length),
+        categories.length,
+        count,
+      );
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
+  Future<void> _preloadLive(
+    XtreamClient client,
+    String scope,
+    List<Category> categories, {
+    required void Function(int done, int total, int count) onProgress,
+  }) async {
+    if (categories.isEmpty) {
+      final items = await client.liveStreams(null);
+      if (items.isNotEmpty) {
+        await CatalogStore.instance.replaceLive(
+          scope,
+          '*',
+          items,
+          generation: _generation(),
+        );
+      }
+      onProgress(1, 1, items.length);
+      return;
+    }
+    var count = 0;
+    const batchSize = 3;
+    for (var start = 0; start < categories.length; start += batchSize) {
+      final batch = categories.skip(start).take(batchSize).toList();
+      final results = await Future.wait(
+        batch.map((category) async {
+          final items = await client.liveStreams(category.id);
+          await CatalogStore.instance.replaceLive(
+            scope,
+            category.id,
+            items,
+            generation: _generation(),
+          );
+          return items.length;
+        }),
+      );
+      count += results.fold<int>(0, (sum, value) => sum + value);
+      onProgress(
+        (start + batch.length).clamp(0, categories.length),
+        categories.length,
+        count,
+      );
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+
+  static int _generation() => DateTime.now().microsecondsSinceEpoch;
+
   CatalogPage<T> _memoryPage<T>(
     List<T> source, {
     required int offset,
@@ -979,8 +1239,6 @@ class CatalogCache {
     }
     return unique.values.toList(growable: false);
   }
-
-  static int _generation() => DateTime.now().microsecondsSinceEpoch;
 
   static bool _sameCategories(List<Category> a, List<Category> b) {
     if (a.length != b.length) return false;
