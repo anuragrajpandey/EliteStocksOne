@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'android_compatibility_player.dart';
 import 'device_profile.dart';
 import 'focus_return.dart';
 import 'library.dart';
@@ -97,13 +96,13 @@ class PlaybackBufferPolicy {
   // `bufferSize` is the demuxer's forward-memory ceiling. 128 MiB is large
   // enough to hold a useful cushion for high-bitrate VOD without creating an
   // unbounded cache. Android TV uses the separately bounded Media3 profile.
-  static const maxMemoryBytes = 64 * 1024 * 1024;
+  static const maxMemoryBytes = 32 * 1024 * 1024;
 
   // Do not let already-played packets consume the forward-buffer budget. A
   // small back buffer is still useful for quick backwards seeks.
   static const maxBackBufferBytes = 8 * 1024 * 1024;
 
-  static const vodAhead = Duration(seconds: 30);
+  static const vodAhead = Duration(seconds: 15);
   static const vodResume = Duration(seconds: 5);
 
   static Duration aheadFor(bool live, {PlaybackMode? mode}) {
@@ -706,68 +705,11 @@ class PlaybackController extends ChangeNotifier {
     if (newItems.isEmpty) return;
     if (captureReturnFocus) _returnFocus.capture();
     final safeIndex = i.clamp(0, newItems.length - 1);
-    // Mobile playback stays on the embedded MPV engine. TVs use the native
-    // Android surface internally for compositor stability; there is no
-    // user-facing engine switch.
-    if (AndroidCompatibilityPlayer.isAvailable && DeviceProfile.isTelevision) {
-      _openNativeAndroid(newItems, safeIndex);
-      return;
-    }
+    // MPV is the only playback engine. Keep the complete player lifecycle
+    // inside media_kit so Flutter never crosses into a second native player.
     _openEmbedded(newItems, safeIndex);
   }
 
-  Future<void> _openNativeAndroid(
-    List<PlayerItem> newItems,
-    int safeIndex,
-  ) async {
-    // Never marshal an entire provider/search result into the native Android
-    // player. A catalog can contain hundreds of thousands of entries, and
-    // building that platform-channel payload can exhaust RAM or stall the UI.
-    const radius = 100;
-    final start = (safeIndex - radius).clamp(0, newItems.length).toInt();
-    final end = (safeIndex + radius + 1)
-        .clamp(start, newItems.length)
-        .toInt();
-    final window = newItems.sublist(start, end);
-    final windowIndex = safeIndex - start;
-    final selected = window[windowIndex];
-    final selectedSources = playbackSourceCandidates(selected);
-    final opened = await AndroidCompatibilityPlayer.open(
-      url: selectedSources.first,
-      title: selected.title,
-      isLive: selected.isLive,
-      playlist: [
-        for (final item in window)
-          () {
-            final sources = playbackSourceCandidates(item);
-            final saved = item.progressKey == null
-                ? null
-                : Library.instance.progress[item.progressKey];
-            return AndroidCompatibilityPlaylistItem(
-              url: sources.first,
-              title: item.title,
-              alternateUrl: sources.length > 1 ? sources[1] : null,
-              favoriteRef: item.favRef,
-              progressKey: item.progressKey,
-              poster: item.poster,
-              ext: item.ext,
-              resumePositionSeconds: saved?.position ?? 0,
-            );
-          }(),
-      ],
-      initialIndex: windowIndex,
-      headers: {
-        'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
-        'Accept': '*/*',
-        ...selected.httpHeaders,
-      },
-    );
-    if (opened) {
-      _returnFocus.restore();
-    } else {
-      _openEmbedded(newItems, safeIndex);
-    }
-  }
 
   void _openEmbedded(List<PlayerItem> newItems, int safeIndex) {
     _ensurePlayer();
