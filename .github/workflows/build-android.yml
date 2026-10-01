@@ -20,7 +20,7 @@ env:
 
 jobs:
   android:
-    name: Build APK
+    name: Build Android ${{ inputs.build_type }}
     runs-on: ubuntu-latest
 
     steps:
@@ -71,6 +71,7 @@ jobs:
           EOF
 
       - name: Build APK
+        if: inputs.build_type == 'apk'
         run: |
           for attempt in 1 2 3; do
             if flutter build apk --release \
@@ -84,6 +85,7 @@ jobs:
           exit 1
 
       - name: Verify APK
+        if: inputs.build_type == 'apk'
         shell: bash
         run: |
           apk="build/app/outputs/flutter-apk/app-release.apk"
@@ -95,6 +97,7 @@ jobs:
           "$apksigner" verify --verbose --print-certs "$apk"
 
       - name: Upload APK
+        if: inputs.build_type == 'apk'
         uses: actions/upload-artifact@v4
         with:
           name: EliteStocks-One-APK
