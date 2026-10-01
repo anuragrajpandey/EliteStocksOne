@@ -13,6 +13,22 @@ import 'xtream.dart';
 ///    while it is still loading share one request;
 ///  * provider work is gently scheduled, preventing a newly-built page from
 ///    opening a large burst of simultaneous connections.
+class CatalogPreloadProgress {
+  const CatalogPreloadProgress({
+    required this.stage,
+    required this.percent,
+    required this.movies,
+    required this.series,
+    required this.live,
+  });
+
+  final String stage;
+  final double percent;
+  final int movies;
+  final int series;
+  final int live;
+}
+
 class CatalogCache {
   CatalogCache._();
   static final CatalogCache instance = CatalogCache._();
@@ -838,7 +854,6 @@ class CatalogCache {
   }) async {
     _ensureOwner(client);
     final scope = client.catalogScope;
-    const kinds = <String>['movie', 'series', 'live'];
     var movieCount = 0;
     var seriesCount = 0;
     var liveCount = 0;
