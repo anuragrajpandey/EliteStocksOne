@@ -239,7 +239,16 @@ class Store {
     ) {
       debugPrint('Secure credential cleanup was deferred: $error');
     });
-    await preferences.remove('catalog_preload_complete');
+    for (final profile in profiles) {
+      await preferences.remove(
+        'catalog_preload_complete_' + profileScope(profile),
+      );
+    }
+    if (profiles.isNotEmpty) {
+      await preferences.remove(
+        'catalog_preload_complete_' + combinedCatalogScope(profiles),
+      );
+    }
   }
 
   static Future<List<XtreamCredentials>> removeProfile(
