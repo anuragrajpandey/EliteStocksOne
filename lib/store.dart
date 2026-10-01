@@ -228,12 +228,7 @@ class Store {
       );
     }
 
-    // Remove private account-owned library state and the active credential.
-    for (final profile in profiles) {
-      for (final key in _profileStateKeys) {
-        await deletePrivate(scopedKey(key, profile));
-      }
-    }
+    // Keep viewing history/favourites, but remove the active credential.
     await _delete(_kActive).timeout(const Duration(seconds: 3)).catchError((
       Object error,
     ) {
