@@ -273,6 +273,230 @@ class LumenPaletteScope extends StatelessWidget {
 typedef ProfileStateActivator =
     Future<void> Function(XtreamCredentials? credentials);
 
+class CatalogLoadingScreen extends StatelessWidget {
+  const CatalogLoadingScreen({
+    super.key,
+    required this.progress,
+    required this.onRetry,
+    this.error,
+  });
+
+  final CatalogPreloadProgress progress;
+  final String? error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (progress.percent.clamp(0.0, 1.0) * 100).round();
+    final failed = error != null;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(28, 30, 28, 28),
+                decoration: BoxDecoration(
+                  color: const Color(0xE6111517),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      failed
+                          ? Icons.error_outline_rounded
+                          : Icons.library_music_outlined,
+                      color: Colors.white,
+                      size: 46,
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      failed ? 'Playlist loading failed' : 'Loading your playlist',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      failed ? error! : progress.stage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (!failed) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(99),
+                              child: LinearProgressIndicator(
+                                value: progress.percent.clamp(0.0, 1.0),
+                                minHeight: 8,
+                                color: Colors.white,
+                                backgroundColor: Colors.white12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Text(
+                            '$percent%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CatalogCount(
+                              label: 'MOVIES',
+                              value: progress.movies,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _CatalogCount(
+                              label: 'SHOWS',
+                              value: progress.series,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _CatalogCount(
+                              label: 'TV CHANNELS',
+                              value: progress.live,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 8),
+                      const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white54,
+                        size: 34,
+                      ),
+                    ],
+                    const SizedBox(height: 26),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Caution: while loading your playlist, do not switch or close EliteStocks One.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12.5,
+                                height: 1.45,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (failed) ...[
+                      const SizedBox(height: 18),
+                      OutlinedButton.icon(
+                        onPressed: onRetry,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
+                          side: const BorderSide(color: Colors.white38),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text(
+                          'Retry loading',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatalogCount extends StatelessWidget {
+  const _CatalogCount({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.055),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value.toString(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white54,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class SessionGate extends StatefulWidget {
   final ProfileStateActivator? profileActivator;
 
