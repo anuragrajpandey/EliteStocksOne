@@ -49,15 +49,6 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Native Media3 compatibility player for streams that the
-             cross-platform playback engine cannot decode reliably. -->
-        <activity
-            android:name=".Media3PlayerActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.Material.NoActionBar"
-            android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|smallestScreenSize|keyboard|keyboardHidden|uiMode"
-            android:hardwareAccelerated="true" />
         <service
             android:name=".DownloadTransferService"
             android:exported="false"
