@@ -2,6 +2,15 @@ name: Build EliteStocks One Android
 
 on:
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: "What do you want to build?"
+        required: true
+        default: "apk"
+        type: choice
+        options:
+          - apk
+          - aab
 
 permissions:
   contents: read
