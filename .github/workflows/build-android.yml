@@ -84,6 +84,10 @@ jobs:
           done
           exit 1
 
+      - name: Build Android App Bundle
+        if: inputs.build_type == 'aab'
+        run: flutter build app"bundle" --release --build-number=${{ github.run_number }} --dart-define=APP_BUILD=${{ github.run_number }}
+
       - name: Verify APK
         if: inputs.build_type == 'apk'
         shell: bash
@@ -102,5 +106,14 @@ jobs:
         with:
           name: EliteStocks-One-APK
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AAB
+        if: inputs.build_type == 'aab'
+        uses: actions/upload-artifact@v4
+        with:
+          name: EliteStocks-One-AAB
+          path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 30
