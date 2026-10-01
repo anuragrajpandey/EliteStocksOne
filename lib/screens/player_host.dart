@@ -8,7 +8,6 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:window_manager/window_manager.dart';
-import '../android_compatibility_player.dart';
 import '../android_subtitle_picker.dart';
 import '../device_profile.dart';
 import '../library.dart';
@@ -265,6 +264,8 @@ class _PlayerHostState extends State<PlayerHost> {
   // in-player panel ('subs' | 'settings' | null) — used instead of bottom
   // sheets since the player isn't inside a Navigator.
   String? _panelKind;
+  String? _pendingAudioTrackId;
+  String? _pendingSubtitleTrackId;
 
   // subtitle appearance + sync
   double _subScale = 1.0;
@@ -1145,43 +1146,6 @@ class _PlayerHostState extends State<PlayerHost> {
     await _enterFullscreen();
   }
 
-  Future<void> _switchToExo() async {
-    if (!_isAndroid || DeviceProfile.isTelevision || !pc.hasMedia) return;
-    final current = pc.item;
-    final position = pc.player?.state.position.inSeconds ?? 0;
-    // Release the MPV decoder before handing the same stream to Media3.
-    // Running both Android engines during the handoff can exhaust hardware
-    // decoder slots on some phones.
-    await pc.player?.pause();
-    final opened = await AndroidCompatibilityPlayer.open(
-      url: pc.activeSourceUrl,
-      title: current.title,
-      isLive: current.isLive,
-      headers: {
-        'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
-        'Accept': '*/*',
-        ...current.httpHeaders,
-      },
-      playlist: [
-        AndroidCompatibilityPlaylistItem(
-          url: pc.activeSourceUrl,
-          title: current.title,
-          favoriteRef: current.favRef,
-          progressKey: current.progressKey,
-          poster: current.poster,
-          ext: current.ext,
-          resumePositionSeconds: position,
-        ),
-      ],
-      initialIndex: 0,
-    );
-    if (!mounted) return;
-    if (opened) {
-      _close();
-    } else {
-      _flashHud('EXO Player unavailable', Icons.error_outline_rounded);
-    }
-  }
 
   void _toggleMute() {
     _muted = !_muted;
@@ -2002,42 +1966,7 @@ class _PlayerHostState extends State<PlayerHost> {
             icon: const Icon(Icons.refresh_rounded, size: 17),
             label: const Text('Retry stream'),
           ),
-          if (_isAndroid)
-            IconButton(
-              tooltip: 'Open Android compatibility player',
-              style:
-                  IconButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.white10,
-                  ).copyWith(
-                    side: lumenControlSide(
-                      resting: const BorderSide(color: Colors.white24),
-                      focused: accent,
-                    ),
-                  ),
-              onPressed: () async {
-                final opened = await AndroidCompatibilityPlayer.open(
-                  url: pc.activeSourceUrl,
-                  title: _item.title,
-                  isLive: _item.isLive,
-                  headers: {
-                    'User-Agent': 'VLC/3.0.20 LibVLC/3.0.20',
-                    'Accept': '*/*',
-                    ..._item.httpHeaders,
-                  },
-                );
-                if (!mounted) return;
-                if (opened) {
-                  _close();
-                } else {
-                  _flashHud(
-                    'Android player is unavailable',
-                    Icons.error_outline_rounded,
-                  );
-                }
-              },
-              icon: const Icon(Icons.android_rounded, size: 19),
-            ),
+
           IconButton(
             tooltip: 'Playback information',
             style:
@@ -2653,14 +2582,9 @@ class _PlayerHostState extends State<PlayerHost> {
                       _mobilePlayerAction(
                         Icons.closed_caption_outlined,
                         'Audio & Subtitles',
-                        _pickSubtitles,
+                        _openAudioSubtitlePanel,
                       ),
                       const SizedBox(width: 18),
-                      _mobilePlayerAction(
-                        Icons.swap_horiz_rounded,
-                        'EXO',
-                        _switchToExo,
-                      ),
                     ],
                   );
                 }
@@ -2679,13 +2603,6 @@ class _PlayerHostState extends State<PlayerHost> {
                         Icons.lock_outline_rounded,
                         _toggleControlsLock,
                         tooltip: 'Lock controls',
-                        compact: compact,
-                      ),
-                    if (_isAndroid && !DeviceProfile.isTelevision)
-                      _bottomIcon(
-                        Icons.swap_horiz_rounded,
-                        _switchToExo,
-                        tooltip: 'Switch to EXO Player',
                         compact: compact,
                       ),
                     _bottomIcon(
@@ -3019,6 +2936,46 @@ class _PlayerHostState extends State<PlayerHost> {
     }
   }
 
+  void _openAudioSubtitlePanel() {
+    final player = pc.player;
+    if (player == null) return;
+    _hideTimer?.cancel();
+    _pendingAudioTrackId = player.state.track.audio.id;
+    _pendingSubtitleTrackId = player.state.track.subtitle.id;
+    setState(() {
+      _controls = true;
+      _panelKind = 'tracks';
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _panelFocusScope.requestFocus();
+        _panelFocusScope.nextFocus();
+      }
+    });
+  }
+
+  Future<void> _applyAudioSubtitleSelection() async {
+    final player = pc.player;
+    if (player == null) return;
+    for (final track in player.state.tracks.audio) {
+      if (track.id == _pendingAudioTrackId) {
+        await player.setAudioTrack(track);
+        break;
+      }
+    }
+    if (_pendingSubtitleTrackId == 'no') {
+      await player.setSubtitleTrack(SubtitleTrack.no());
+    } else {
+      for (final track in player.state.tracks.subtitle) {
+        if (track.id == _pendingSubtitleTrackId) {
+          await player.setSubtitleTrack(track);
+          break;
+        }
+      }
+    }
+    if (mounted) _closePanel();
+  }
+
   void _openSettings() {
     _hideTimer?.cancel();
     setState(() {
@@ -3070,7 +3027,8 @@ class _PlayerHostState extends State<PlayerHost> {
 
   Widget _panel() {
     final w = MediaQuery.sizeOf(context).width;
-    final panelW = w < 640 ? w * 0.88 : 380.0;
+    final isTrackPanel = _panelKind == 'tracks';
+    final panelW = isTrackPanel ? w : (w < 640 ? w * 0.88 : 380.0);
     // A dark, glassy side panel over the video (never the app's light surface),
     // with a hidden scrollbar and white content.
     return FocusScope(
@@ -3090,15 +3048,19 @@ class _PlayerHostState extends State<PlayerHost> {
             right: 0,
             width: panelW,
             child: ClipRRect(
-              borderRadius: BorderRadius.horizontal(
-                left: Radius.circular(lumenCorner(22)),
-              ),
+              borderRadius: isTrackPanel
+                  ? BorderRadius.zero
+                  : BorderRadius.horizontal(
+                      left: Radius.circular(lumenCorner(22)),
+                    ),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
                 child: Container(
                   decoration: const BoxDecoration(
-                    color: Color(0xF00C1512),
-                    border: Border(left: BorderSide(color: Colors.white24)),
+                    color: Color(0xF5090A0B),
+                    border: isTrackPanel
+                        ? const Border()
+                        : const Border(left: BorderSide(color: Colors.white24)),
                   ),
                   child: SafeArea(
                     child: DefaultTextStyle.merge(
@@ -3138,13 +3100,15 @@ class _PlayerHostState extends State<PlayerHost> {
                                   behavior: ScrollConfiguration.of(
                                     context,
                                   ).copyWith(scrollbars: false),
-                                  child: SingleChildScrollView(
-                                    child: _panelKind == 'subs'
-                                        ? _subsContent()
-                                        : _panelKind == 'diagnostics'
-                                        ? _diagnosticsContent()
-                                        : _settingsContent(),
-                                  ),
+                                  child: _panelKind == 'tracks'
+                                      ? _audioSubtitleContent()
+                                      : SingleChildScrollView(
+                                          child: _panelKind == 'subs'
+                                              ? _subsContent()
+                                              : _panelKind == 'diagnostics'
+                                              ? _diagnosticsContent()
+                                              : _settingsContent(),
+                                        ),
                                 ),
                         ),
                       ),
@@ -3152,6 +3116,213 @@ class _PlayerHostState extends State<PlayerHost> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _audioSubtitleContent() {
+    final player = pc.player;
+    if (player == null) {
+      return const Center(
+        child: Text(
+          'Player unavailable.',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+    final audio = player.state.tracks.audio
+        .where((track) => track.id != 'auto' && track.id != 'no')
+        .toList();
+    final subtitles = player.state.tracks.subtitle
+        .where((track) => track.id != 'auto')
+        .toList();
+
+    String labelFor(dynamic track, String fallback) {
+      final parts = <String>[
+        if (track.title is String && (track.title as String).isNotEmpty)
+          track.title as String,
+        if (track.language is String && (track.language as String).isNotEmpty)
+          track.language as String,
+      ];
+      return parts.isEmpty ? fallback : parts.join(' · ');
+    }
+
+    Widget column(String title, IconData icon, List<Widget> rows) {
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 26, 28, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 21, color: Colors.white70),
+                  const SizedBox(width: 10),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 22),
+              Expanded(
+                child: rows.isEmpty
+                    ? const Align(
+                        alignment: Alignment.topLeft,
+                        child: Text(
+                          'No tracks available.',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: rows.length,
+                        separatorBuilder: (_, _) =>
+                            const Divider(color: Colors.white18, height: 1),
+                        itemBuilder: (_, index) => rows[index],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    Widget row({
+      required String label,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
+      return InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 2),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.check_rounded : Icons.circle_outlined,
+                color: selected ? Colors.white : Colors.white24,
+                size: selected ? 25 : 18,
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? Colors.white : Colors.white70,
+                    fontSize: 17,
+                    fontWeight:
+                        selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final audioRows = <Widget>[
+      for (var index = 0; index < audio.length; index++)
+        row(
+          label: labelFor(audio[index], 'Audio ' + (index + 1).toString()),
+          selected: audio[index].id == _pendingAudioTrackId,
+          onTap: () => setState(() => _pendingAudioTrackId = audio[index].id),
+        ),
+    ];
+    final subtitleRows = <Widget>[
+      row(
+        label: 'Off',
+        selected: _pendingSubtitleTrackId == 'no',
+        onTap: () => setState(() => _pendingSubtitleTrackId = 'no'),
+      ),
+      for (var index = 0; index < subtitles.length; index++)
+        if (subtitles[index].id != 'no')
+          row(
+            label: labelFor(
+              subtitles[index],
+              'Subtitle ' + (index + 1).toString(),
+            ),
+            selected: subtitles[index].id == _pendingSubtitleTrackId,
+            onTap: () => setState(
+              () => _pendingSubtitleTrackId = subtitles[index].id,
+            ),
+          ),
+    ];
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 22, 22, 8),
+            child: Row(
+              children: [
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Close',
+                  onPressed: _closePanel,
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                column('Audio', Icons.audiotrack_rounded, audioRows),
+                const VerticalDivider(color: Colors.white18, width: 1),
+                column(
+                  'Subtitles',
+                  Icons.closed_caption_outlined,
+                  subtitleRows,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 10, 28, 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _closePanel,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 13,
+                    ),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 10),
+                FilledButton(
+                  onPressed: _applyAudioSubtitleSelection,
+                  style: FilledButton.styleFrom(
+                    foregroundColor: Colors.black,
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 13,
+                    ),
+                  ),
+                  child: const Text(
+                    'Apply',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
