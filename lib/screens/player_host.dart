@@ -1313,10 +1313,22 @@ class _PlayerHostState extends State<PlayerHost> {
             children: [
               _hudOverlay(),
               if (_controlsLocked &&
-                  _lockedButtonVisible &&
                   !DeviceProfile.isTelevision &&
                   !_isDesktop)
-                _lockedControlsButton()
+                IgnorePointer(
+                  ignoring: !_lockedButtonVisible,
+                  child: AnimatedOpacity(
+                    opacity: _lockedButtonVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    child: AnimatedScale(
+                      scale: _lockedButtonVisible ? 1 : 0.82,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutBack,
+                      child: _lockedControlsButton(),
+                    ),
+                  ),
+                )
               else
                 AnimatedOpacity(
                   opacity: _controls ? 1 : 0,
