@@ -352,12 +352,17 @@ class CatalogLoadingScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 14),
-                          Text(
-                            '$percent%',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                          TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: 0, end: percent),
+                            duration: const Duration(milliseconds: 450),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, animatedPercent, _) => Text(
+                              '$animatedPercent%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ],
@@ -470,14 +475,19 @@ class _CatalogCount extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            value.toString(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: value),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutCubic,
+            builder: (context, animatedValue, _) => Text(
+              animatedValue.toString(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           const SizedBox(height: 4),
