@@ -291,10 +291,16 @@ class _SessionGateState extends State<SessionGate> {
   String _loadingLabel = 'RESTORING YOUR SESSION';
   int _sessionChange = 0;
   bool _exitDialogOpen = false;
+  CatalogPreloadProgress? _catalogProgress;
+  String? _catalogLoadError;
+  Timer? _catalogRefreshTimer;
+  bool _catalogRefreshInFlight = false;
+  late final AppLifecycleListener _catalogLifecycle;
 
   @override
   void initState() {
     super.initState();
+    _catalogLifecycle = AppLifecycleListener(onResume: _checkCatalogRefreshDue);
     _bootstrap();
   }
 
@@ -310,23 +316,177 @@ class _SessionGateState extends State<SessionGate> {
     final viewerProfiles = credentials == null
         ? <XtreamCredentials>[]
         : await Store.viewerProfiles(credentials);
-    final profileState = _activateProfileState(credentials);
+    final legalAccepted = values[1] as bool;
+
     if (!mounted) return;
     setState(() {
       _creds = credentials;
       _viewerProfiles = viewerProfiles;
-      _legalAccepted = values[1] as bool;
-      _loading = false;
-      _selectingViewer =
-          credentials != null && ViewingProfiles.instance.profiles.length > 1;
+      _legalAccepted = legalAccepted;
+      _loading = credentials != null;
+      _loadingLabel = credentials == null
+          ? 'RESTORING YOUR SESSION'
+          : 'LOADING YOUR LIBRARY';
+      _selectingViewer = false;
+      _catalogProgress = credentials == null
+          ? null
+          : const CatalogPreloadProgress(
+              stage: 'Preparing your library',
+              percent: 0,
+              movies: 0,
+              series: 0,
+              live: 0,
+            );
+      _catalogLoadError = null;
     });
+
     AppDiagnostics.instance.record(
       'Session',
       credentials == null
           ? 'Restored signed-out session'
-          : 'Restored ${AppDiagnostics.sourceLabel(credentials)} session',
+          : 'Restored ' + AppDiagnostics.sourceLabel(credentials) + ' session',
     );
-    unawaited(_guardProfileState(profileState));
+
+    if (credentials == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    await _activateProfileState(credentials);
+    if (!mounted || _creds != credentials) return;
+
+    final client = _client ??= viewerProfiles.length > 1
+        ? MultiSourceXtreamClient(credentials, viewerProfiles)
+        : XtreamClient(credentials);
+    activeClient = client;
+
+    final complete = await CatalogCache.instance.hasCompletedInitialLoad(client);
+    if (!complete) {
+      final loaded = await _loadCatalogBeforeEntering(client);
+      if (!mounted || _creds != credentials || !loaded) return;
+    } else {
+      setState(() {
+        _loading = false;
+        _loadingLabel = 'RESTORING YOUR SESSION';
+        _catalogProgress = null;
+      });
+      await _scheduleCatalogRefresh(client);
+    }
+
+    if (!mounted || _creds != credentials) return;
+    final profiles = await Store.viewerProfiles(credentials);
+    if (mounted && !_sameViewerProfiles(_viewerProfiles, profiles)) {
+      setState(() => _viewerProfiles = profiles);
+    }
+  }
+
+  Future<bool> _loadCatalogBeforeEntering(XtreamClient client) async {
+    if (!mounted) return false;
+    setState(() {
+      _loading = true;
+      _loadingLabel = 'LOADING YOUR LIBRARY';
+      _catalogLoadError = null;
+    });
+    try {
+      await CatalogCache.instance.preloadAll(
+        client,
+        onProgress: (progress) {
+          if (!mounted) return;
+          setState(() => _catalogProgress = progress);
+        },
+      );
+      if (!mounted) return true;
+      setState(() {
+        _loading = false;
+        _loadingLabel = 'RESTORING YOUR SESSION';
+        _catalogLoadError = null;
+        _catalogProgress = null;
+      });
+      await _scheduleCatalogRefresh(client);
+      return true;
+    } catch (error, stack) {
+      AppDiagnostics.instance.record(
+        'Catalog',
+        'Initial catalog preload failed (' + error.runtimeType.toString() + ')',
+      );
+      debugPrint(
+        'Initial catalog preload failed: ' + error.toString() + '\n' + stack.toString(),
+      );
+      if (mounted) {
+        setState(() {
+          _loading = true;
+          _catalogLoadError =
+              'We could not finish loading the playlist. Check the connection and try again.';
+        });
+      }
+      return false;
+    }
+  }
+
+  Future<void> _retryCatalogLoad() async {
+    final credentials = _creds;
+    if (credentials == null) return;
+    final client = _client ??= _viewerProfiles.length > 1
+        ? MultiSourceXtreamClient(credentials, _viewerProfiles)
+        : XtreamClient(credentials);
+    activeClient = client;
+    await _loadCatalogBeforeEntering(client);
+  }
+
+  Future<void> _scheduleCatalogRefresh(XtreamClient client) async {
+    _catalogRefreshTimer?.cancel();
+    final last = await CatalogCache.instance.lastCompletedLoad(client);
+    final elapsed = last == null
+        ? CatalogCache.defaultRefreshInterval
+        : DateTime.now().difference(last);
+    final delay = elapsed >= CatalogCache.defaultRefreshInterval
+        ? Duration.zero
+        : CatalogCache.defaultRefreshInterval - elapsed;
+    _catalogRefreshTimer = Timer(delay, () async {
+      if (!mounted || !identical(_client, client) || _creds == null) return;
+      if (_catalogRefreshInFlight) return;
+      _catalogRefreshInFlight = true;
+      try {
+        await CatalogCache.instance.preloadAll(client, onProgress: (_) {});
+      } catch (error, stack) {
+        AppDiagnostics.instance.record(
+          'Catalog',
+          '12-hour background refresh failed (' +
+              error.runtimeType.toString() +
+              ')',
+        );
+        debugPrint(
+          '12-hour catalog refresh failed: ' + error.toString() + '\n' + stack.toString(),
+        );
+      } finally {
+        _catalogRefreshInFlight = false;
+        if (mounted && identical(_client, client) && _creds != null) {
+          await _scheduleCatalogRefresh(client);
+        }
+      }
+    });
+  }
+
+  Future<void> _checkCatalogRefreshDue() async {
+    final client = _client;
+    if (client == null || _creds == null || _loading) return;
+    final last = await CatalogCache.instance.lastCompletedLoad(client);
+    if (last == null ||
+        DateTime.now().difference(last) >= CatalogCache.defaultRefreshInterval) {
+      if (!_catalogRefreshInFlight) {
+        _catalogRefreshInFlight = true;
+        try {
+          await CatalogCache.instance.preloadAll(client, onProgress: (_) {});
+        } catch (_) {
+          // Keep the last good catalog if a background refresh fails.
+        } finally {
+          _catalogRefreshInFlight = false;
+          if (mounted && identical(_client, client)) {
+            await _scheduleCatalogRefresh(client);
+          }
+        }
+      }
+    }
   }
 
   Future<void> _acceptLegal() async {
@@ -420,14 +580,17 @@ class _SessionGateState extends State<SessionGate> {
         'Session',
         'Profile activation failed (' + error.runtimeType.toString() + ')',
       );
-      debugPrint('Profile activation failed: ' + error.toString() + '\\n' + stack.toString());
+      debugPrint(
+        'Profile activation failed: ' + error.toString() + '\\n' + stack.toString(),
+      );
     }
     if (!mounted || credentials == null) return;
     if (_creds != credentials) return;
-    setState(() {
-      _loading = false;
-      _loadingLabel = 'RESTORING YOUR SESSION';
-    });
+
+    final client = XtreamClient(credentials);
+    _client = client;
+    activeClient = client;
+    if (!await _loadCatalogBeforeEntering(client)) return;
     // The active client is already valid for this login. Re-read saved viewer
     // profiles only to discover additional services; do not recreate the client
     // when the profile list is unchanged, because Home is already mounted.
@@ -565,6 +728,8 @@ class _SessionGateState extends State<SessionGate> {
 
   @override
   void dispose() {
+    _catalogRefreshTimer?.cancel();
+    _catalogLifecycle.dispose();
     _client?.close();
     if (identical(activeClient, _client)) activeClient = null;
     super.dispose();
@@ -582,7 +747,13 @@ class _SessionGateState extends State<SessionGate> {
         if (_loading) {
           return PopScope(
             canPop: false,
-            child: SessionLoading(message: _loadingLabel),
+            child: _catalogProgress != null
+                ? CatalogLoadingScreen(
+                    progress: _catalogProgress!,
+                    error: _catalogLoadError,
+                    onRetry: _retryCatalogLoad,
+                  )
+                : SessionLoading(message: _loadingLabel),
           );
         }
         if (!_legalAccepted) {
