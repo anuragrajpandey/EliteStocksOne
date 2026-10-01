@@ -90,10 +90,5 @@ flutter {
 }
 
 dependencies {
-    // Native Android/TV compatibility engine. Lumen keeps media_kit for its
-    // cross-platform player and can hand difficult streams to Media3.
-    implementation("androidx.media3:media3-exoplayer:1.10.0")
-    implementation("androidx.media3:media3-exoplayer-hls:1.10.0")
-    implementation("androidx.media3:media3-ui:1.10.0")
     testImplementation("junit:junit:4.13.2")
 }
