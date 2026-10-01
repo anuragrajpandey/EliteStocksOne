@@ -3081,8 +3081,8 @@ class _PlayerHostState extends State<PlayerHost> {
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xF5090A0B),
+                  decoration: BoxDecoration(
+                    color: const Color(0xF5090A0B),
                     border: isTrackPanel
                         ? const Border()
                         : const Border(left: BorderSide(color: Colors.white24)),
@@ -3209,7 +3209,7 @@ class _PlayerHostState extends State<PlayerHost> {
                     : ListView.separated(
                         itemCount: rows.length,
                         separatorBuilder: (_, _) =>
-                            const Divider(color: Colors.white18, height: 1),
+                            const Divider(color: Color(0x2FFFFFFF), height: 1),
                         itemBuilder: (_, index) => rows[index],
                       ),
               ),
@@ -3305,7 +3305,7 @@ class _PlayerHostState extends State<PlayerHost> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 column('Audio', Icons.audiotrack_rounded, audioRows),
-                const VerticalDivider(color: Colors.white18, width: 1),
+                const VerticalDivider(color: Color(0x2FFFFFFF), width: 1),
                 column(
                   'Subtitles',
                   Icons.closed_caption_outlined,
