@@ -781,6 +781,7 @@ class _SessionGateState extends State<SessionGate> {
   /// persisted state, then rebuild with a fresh client and catalog namespace.
   Future<void> _activate(XtreamCredentials? credentials) async {
     ++_sessionChange;
+    _catalogRefreshTimer?.cancel();
     final previousClient = _client;
 
     // Commit the authenticated session first. Cleanup and profile hydration
@@ -867,6 +868,7 @@ class _SessionGateState extends State<SessionGate> {
     if (_sameViewerProfiles(_viewerProfiles, profiles)) return;
 
     final previousClient = _client;
+    _catalogRefreshTimer?.cancel();
     setState(() {
       _viewerProfiles = profiles;
       _client = null;
