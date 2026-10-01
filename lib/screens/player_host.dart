@@ -2792,27 +2792,42 @@ class _PlayerHostState extends State<PlayerHost> {
   }
 
   Widget _lockedControlsButton() {
-    return Positioned.fill(
-      child: SafeArea(
-        child: Center(
-          child: GestureDetector(
-            onTap: _toggleControlsLock,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 76,
-                  height: 76,
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.lock_outline_rounded, color: Colors.black, size: 34),
+    return SafeArea(
+      child: Center(
+        child: GestureDetector(
+          onTap: _toggleControlsLock,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 14),
-                const Text('Screen Locked', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                const Text('Tap to Unlock', style: TextStyle(color: Colors.white70, fontSize: 16)),
-              ],
-            ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.lock_outline_rounded,
+                  color: Colors.black,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Screen Locked',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Tap to Unlock',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+            ],
           ),
         ),
       ),
