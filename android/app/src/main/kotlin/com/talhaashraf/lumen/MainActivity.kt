@@ -2,7 +2,6 @@ package com.talhaashraf.lumen
 
 import android.Manifest
 import android.content.Intent
-import android.app.Activity
 import android.app.AlertDialog
 import android.app.PictureInPictureParams
 import android.app.UiModeManager
@@ -268,39 +267,6 @@ class MainActivity : FlutterActivity() {
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == media3RequestCode) {
-            val result = pendingMedia3Result ?: return
-            pendingMedia3Result = null
-            result.success(
-                mapOf(
-                    "opened" to
-                        (resultCode == Activity.RESULT_OK),
-                    "lastIndex" to
-                        (data?.getIntExtra(Media3PlayerActivity.EXTRA_LAST_INDEX, -1) ?: -1),
-                    "favoriteKeys" to
-                        (data?.getStringArrayListExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_FAVORITE_KEYS
-                        ) ?: arrayListOf<String>()),
-                    "favoriteStates" to
-                        (data?.getBooleanArrayExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_FAVORITE_STATES
-                        )?.toList() ?: emptyList<Boolean>()),
-                    "progressTouched" to
-                        (data?.getBooleanArrayExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_PROGRESS_TOUCHED
-                        )?.toList() ?: emptyList<Boolean>()),
-                    "progressPositionsMs" to
-                        (data?.getLongArrayExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_PROGRESS_POSITIONS_MS
-                        )?.toList() ?: emptyList<Long>()),
-                    "progressDurationsMs" to
-                        (data?.getLongArrayExtra(
-                            Media3PlayerActivity.EXTRA_PLAYLIST_PROGRESS_DURATIONS_MS
-                        )?.toList() ?: emptyList<Long>())
-                )
-            )
-            return
-        }
         if (requestCode != subtitleRequestCode) return
         val result = pendingSubtitleResult ?: return
         pendingSubtitleResult = null
