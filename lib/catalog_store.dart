@@ -1286,6 +1286,8 @@ class CatalogStore {
     } catch (_) {}
   }
 
+  bool get isDisabledForWidgetTests => _disabledForWidgetTests;
+
   /// Installs an isolated database for unit tests.
   Future<void> useInMemoryForTests() async {
     await close();
