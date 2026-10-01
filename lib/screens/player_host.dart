@@ -2338,17 +2338,7 @@ class _PlayerHostState extends State<PlayerHost> {
               ),
             ),
             if (mobile)
-              IconButton(
-                tooltip: _controlsLocked ? 'Unlock controls' : 'Lock controls',
-                onPressed: _toggleControlsLock,
-                icon: Icon(
-                  _controlsLocked
-                      ? Icons.lock_rounded
-                      : Icons.lock_outline_rounded,
-                  color: Colors.white,
-                  size: 25,
-                ),
-              )
+              const SizedBox.shrink()
             else ...[
               if (_isLive)
                 Container(
@@ -2584,6 +2574,12 @@ class _PlayerHostState extends State<PlayerHost> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _mobilePlayerAction(
+                        Icons.lock_outline_rounded,
+                        'Lock',
+                        _toggleControlsLock,
+                      ),
+                      const SizedBox(width: 14),
+                      _mobilePlayerAction(
                         Icons.speed_rounded,
                         'Speed (' + (_rate == _rate.roundToDouble()
                             ? _rate.toInt().toString()
@@ -2726,17 +2722,26 @@ class _PlayerHostState extends State<PlayerHost> {
       bottom: 12,
       child: SafeArea(
         top: false,
-        child: IconButton(
-          tooltip: 'Unlock controls',
+        child: TextButton.icon(
           onPressed: _toggleControlsLock,
-          padding: const EdgeInsets.all(10),
-          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.black.withValues(alpha: 0.62),
+          style: TextButton.styleFrom(
             foregroundColor: Colors.white,
+            backgroundColor: Colors.black.withValues(alpha: 0.64),
             side: const BorderSide(color: Colors.white24),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-          icon: const Icon(Icons.lock_rounded, size: 24),
+          icon: const Icon(Icons.lock_open_rounded, size: 21),
+          label: const Text(
+            'Unlock',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
       ),
     );
