@@ -2,22 +2,16 @@ name: Build EliteStocks One Android
 
 on:
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: "Build type"
-        required: true
-        default: "apk"
-        type: choice
-        options:
-          - apk
-          - appbundle
 
 permissions:
   contents: read
 
+env:
+  FLUTTER_VERSION: 3.38.9
+
 jobs:
-  build:
-    name: Build Android ${{ inputs.build_type }}
+  android:
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
@@ -34,10 +28,8 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-
-      - name: Flutter version
-        run: flutter --version
 
       - name: Install dependencies
         run: flutter pub get
@@ -45,20 +37,22 @@ jobs:
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Verify TMDB API key
-        env:
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      - name: Create release keystore
+        shell: bash
         run: |
-          test -n "$TMDB_API_KEY" || {
-            echo "TMDB_API_KEY repository secret is missing."
-            exit 1
-          }
-
-      - name: Create temporary release keystore
-        run: |
-          keytool -genkeypair -v -keystore "$RUNNER_TEMP/elitestocks-one-release.jks" -storetype JKS -alias elitestocks-one -keyalg RSA -keysize 2048 -validity 10000 -storepass githubactions -keypass githubactions -dname "CN=EliteStocks One, OU=Build, O=EliteStocks One, C=IN"
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/elitestocks-one-release.jks" \
+            -storetype JKS \
+            -alias elitestocks-one \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass githubactions \
+            -keypass githubactions \
+            -dname "CN=EliteStocks One, OU=Build, O=EliteStocks One, C=IN"
 
       - name: Configure Android signing
+        shell: bash
         run: |
           cat > android/key.properties <<EOF
           storePassword=githubactions
@@ -68,45 +62,33 @@ jobs:
           EOF
 
       - name: Build APK
-        if: inputs.build_type == 'apk'
-        env:
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: |
           for attempt in 1 2 3; do
-            if flutter build apk --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY"; then
+            if flutter build apk --release \
+              --build-number=${{ github.run_number }} \
+              --dart-define=APP_BUILD=${{ github.run_number }}; then
               exit 0
             fi
-            echo "APK build attempt $attempt failed; retrying after dependency/network backoff..."
+            echo "APK build attempt $attempt failed; retrying..."
             sleep $((attempt * 15))
           done
           exit 1
 
-      - name: Build App Bundle
-        if: inputs.build_type == 'appbundle'
-        env:
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+      - name: Verify APK
+        shell: bash
         run: |
-          for attempt in 1 2 3; do
-            if flutter build appbundle --release --dart-define=TMDB_API_KEY="$TMDB_API_KEY"; then
-              exit 0
-            fi
-            echo "App Bundle build attempt $attempt failed; retrying after dependency/network backoff..."
-            sleep $((attempt * 15))
-          done
-          exit 1
+          apk="build/app/outputs/flutter-apk/app-release.apk"
+          test -f "$apk"
+
+          apksigner="$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$apksigner"
+
+          "$apksigner" verify --verbose --print-certs "$apk"
 
       - name: Upload APK
-        if: inputs.build_type == 'apk'
         uses: actions/upload-artifact@v4
         with:
           name: EliteStocks-One-APK
-          path: build/app/outputs/flutter-apk/*.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-
-      - name: Upload App Bundle
-        if: inputs.build_type == 'appbundle'
-        uses: actions/upload-artifact@v4
-        with:
-          name: EliteStocks-One-AAB
-          path: build/app/outputs/bundle/release/*.aab
-          if-no-files-found: error
+          retention-days: 30
