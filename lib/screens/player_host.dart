@@ -812,15 +812,15 @@ class _PlayerHostState extends State<PlayerHost> {
                       width: 72,
                       height: 72,
                       decoration: BoxDecoration(
-                        color: accent,
+                        color: Colors.white.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
-                        boxShadow: glow(accent, a: 0.5),
+                        border: Border.all(color: Colors.white24),
                       ),
                       child: Icon(
                         playing
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded,
-                        color: onAccent,
+                        color: Colors.white,
                         size: 40,
                       ),
                     ),
