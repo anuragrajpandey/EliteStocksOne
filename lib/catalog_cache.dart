@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'catalog_store.dart';
 import 'models.dart';
@@ -848,6 +849,22 @@ class CatalogCache {
   /// Counts are the number of records fetched into the local catalog index.
   /// The index is written per category, so a large provider never needs to
   /// keep the complete library in Dart memory at once.
+  static const Duration defaultRefreshInterval = Duration(hours: 12);
+
+  String _preloadKey(XtreamClient client) =>
+      'catalog_preload_complete_' + client.catalogScope;
+
+  Future<bool> hasCompletedInitialLoad(XtreamClient client) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_preloadKey(client)) != null;
+  }
+
+  Future<DateTime?> lastCompletedLoad(XtreamClient client) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getInt(_preloadKey(client));
+    return raw == null ? null : DateTime.fromMillisecondsSinceEpoch(raw);
+  }
+
   Future<void> preloadAll(
     XtreamClient client, {
     required void Function(CatalogPreloadProgress progress) onProgress,
@@ -938,6 +955,11 @@ class CatalogCache {
     );
 
     revision.value++;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(
+      _preloadKey(client),
+      DateTime.now().millisecondsSinceEpoch,
+    );
     onProgress(
       CatalogPreloadProgress(
         stage: 'Library ready',
