@@ -575,6 +575,15 @@ class _SessionGateState extends State<SessionGate> {
       if (mounted) setState(() => _loading = false);
       return;
     }
+    if (!legalAccepted) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _catalogProgress = null;
+        });
+      }
+      return;
+    }
 
     await _activateProfileState(credentials);
     if (!mounted || _creds != credentials) return;
@@ -715,7 +724,11 @@ class _SessionGateState extends State<SessionGate> {
 
   Future<void> _acceptLegal() async {
     await LegalAcceptance.accept();
-    if (mounted) setState(() => _legalAccepted = true);
+    if (!mounted) return;
+    setState(() => _legalAccepted = true);
+    if (_creds != null) {
+      await _retryCatalogLoad();
+    }
   }
 
   XtreamClient? _client; // cached so theme rebuilds don't recreate it
