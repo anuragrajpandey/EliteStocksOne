@@ -34,9 +34,14 @@ jobs:
           case "$BUILD_NUMBER" in
             ''|*[!0-9]*) echo 'A positive build number is required.'; exit 1 ;;
           esac
-          current="$(curl --fail --silent --show-error \
-            https://api.github.com/repos/Talha-Ashraf420/Lumen-App/releases/latest \
-            | jq -r '.body | capture("build: (?<number>[0-9]+)").number')"
+          response="$(curl --fail --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/latest" || true)"
+          current="$(printf '%s' "$response" | jq -r 'try (.body | capture("build: (?<number>[0-9]+)").number) catch "0"')"
+          if ! [[ "$current" =~ ^[0-9]+$ ]]; then
+            current=0
+          fi
           if [ "$BUILD_NUMBER" -le "$current" ]; then
             echo "Build $BUILD_NUMBER must exceed current release $current"
             exit 1
