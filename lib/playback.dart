@@ -158,7 +158,7 @@ const androidSurfaceVideoConfiguration = VideoControllerConfiguration(
 VideoControllerConfiguration videoConfigurationFor(
   TargetPlatform platform, {
   bool television = false,
-}) => platform == TargetPlatform.android && television
+}) => platform == TargetPlatform.android
     ? androidSurfaceVideoConfiguration
     : const VideoControllerConfiguration();
 
