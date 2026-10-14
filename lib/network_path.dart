@@ -58,7 +58,10 @@ class NetworkPathMonitor {
     final connectivity = Connectivity();
     try {
       _current = NetworkPathSnapshot(
-        (await connectivity.checkConnectivity()).toSet(),
+        (await connectivity
+                .checkConnectivity()
+                .timeout(const Duration(seconds: 2)))
+            .toSet(),
       );
     } catch (_) {
       // Playback still has its own timeouts when a platform cannot expose the
