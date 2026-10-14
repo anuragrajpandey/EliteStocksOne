@@ -93,17 +93,16 @@ class PlaybackPolicy {
 /// broadcast. Movies and episodes trade a little startup time for a deeper
 /// buffer that can absorb normal provider and Wi-Fi jitter.
 class PlaybackBufferPolicy {
-  // `bufferSize` is the demuxer's forward-memory ceiling. 128 MiB is large
-  // enough to hold a useful cushion for high-bitrate VOD without creating an
-  // unbounded cache. Android TV uses the separately bounded Media3 profile.
-  static const maxMemoryBytes = 128 * 1024 * 1024;
+  // Keep the native demuxer cache conservative on Android devices. Large
+  // provider bitrates plus decoded frames/surfaces can otherwise compete for
+  // memory and make the UI unresponsive on lower-memory phones and TVs.
+  static const maxMemoryBytes = 32 * 1024 * 1024;
 
-  // Do not let already-played packets consume the forward-buffer budget. A
-  // small back buffer is still useful for quick backwards seeks.
-  static const maxBackBufferBytes = 16 * 1024 * 1024;
+  // Keep only a small rewind cushion so forward buffering has priority.
+  static const maxBackBufferBytes = 5 * 1024 * 1024;
 
-  static const vodAhead = Duration(seconds: 90);
-  static const vodResume = Duration(seconds: 15);
+  static const vodAhead = Duration(seconds: 45);
+  static const vodResume = Duration(seconds: 5);
 
   static Duration aheadFor(bool live, {PlaybackMode? mode}) {
     if (!live) return vodAhead;
@@ -667,12 +666,27 @@ class PlaybackController extends ChangeNotifier {
 
   void _ensurePlayer() {
     if (player != null) return;
-    player = Player(configuration: streamingPlayerConfiguration);
-    controller = createVideoController(player!);
-    _nativeSetup = configureStreamingPlayer(player!).catchError((_) {});
-    _posSub = player!.stream.position.listen(_onPosition);
-    _completedSub = player!.stream.completed.listen((done) {
-      if (!done || isLive) return;
+    final activePlayer = Player(configuration: streamingPlayerConfiguration);
+    player = activePlayer;
+    final activeController = createVideoController(activePlayer);
+    controller = activeController;
+
+    // VideoController performs asynchronous Android surface/native setup.
+    // Configure libmpv only after that setup completes; issuing both sets of
+    // native commands concurrently can race the first Player.open().
+    _nativeSetup = activeController.platform
+        .then((_) async {
+          if (!identical(player, activePlayer) ||
+              !identical(controller, activeController)) {
+            return;
+          }
+          await configureStreamingPlayer(activePlayer);
+        })
+        .catchError((_) {});
+
+    _posSub = activePlayer.stream.position.listen(_onPosition);
+    _completedSub = activePlayer.stream.completed.listen((done) {
+      if (!identical(player, activePlayer) || !done || isLive) return;
       final item = playbackItemAt(items, index);
       final key = item?.progressKey;
       if (key != null && key.isNotEmpty) {
@@ -682,7 +696,9 @@ class PlaybackController extends ChangeNotifier {
       }
       if (hasNext && autoAdvance) go(index + 1);
     });
-    _errorSub = player!.stream.error.listen(_onPlayerError);
+    _errorSub = activePlayer.stream.error.listen((error) {
+      if (identical(player, activePlayer)) _onPlayerError(error);
+    });
     _networkSignature = NetworkPathMonitor.instance.current.signature;
     _networkSub = NetworkPathMonitor.instance.changes.listen(_onNetworkChanged);
     _statsTimer = Timer.periodic(
@@ -797,27 +813,52 @@ class PlaybackController extends ChangeNotifier {
 
   Future<void> _openMedia(PlayerItem target, int token) async {
     final source = activeSourceUrl;
+    final activePlayer = player;
+    final activeController = controller;
+    if (activePlayer == null || activeController == null) return;
     try {
+      // On Android the VideoController first creates a native output surface
+      // asynchronously. Do not open a stream until the controller is ready,
+      // and bound the wait so a failed platform channel becomes recoverable
+      // playback feedback rather than an endless loading state.
+      await activeController.platform.timeout(const Duration(seconds: 12));
+      if (token != _openToken ||
+          !identical(player, activePlayer) ||
+          !identical(controller, activeController) ||
+          item != target) {
+        return;
+      }
       await _nativeSetup;
-      if (token != _openToken || player == null || item != target) return;
+      if (token != _openToken ||
+          !identical(player, activePlayer) ||
+          item != target) {
+        return;
+      }
       // Player.open() replaces the current Media/Playlist. Avoid an
       // explicit stop here, especially after a user pause, so retry does not
       // race a pause/stop native transition before reopening the same player.
-      if (token != _openToken || player == null || item != target) return;
-      await configurePlayerForItem(player!, target);
-      if (token != _openToken || player == null || item != target) return;
-      await player!.open(mediaForPlayerItem(target, sourceUrl: source));
+      await configurePlayerForItem(activePlayer, target);
+      if (token != _openToken ||
+          !identical(player, activePlayer) ||
+          item != target) {
+        return;
+      }
+      await activePlayer.open(mediaForPlayerItem(target, sourceUrl: source));
       // Player.open() starts media by default. If the user pressed Pause while
       // the item was still opening, immediately put the newly opened media back
       // into the paused state instead of racing a later play/pause transition.
       if (!_wantsPlayback &&
           token == _openToken &&
-          player != null &&
+          identical(player, activePlayer) &&
           item == target) {
-        await player!.pause();
+        await activePlayer.pause();
       }
     } catch (error) {
-      if (token != _openToken || player == null || item != target) return;
+      if (token != _openToken ||
+          !identical(player, activePlayer) ||
+          item != target) {
+        return;
+      }
       _setFailure(classifyPlaybackFailure('$error'));
       _handleFailedAttempt();
     }
