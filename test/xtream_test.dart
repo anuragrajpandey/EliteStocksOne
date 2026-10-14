@@ -103,14 +103,13 @@ https://stream.example/sport.m3u8
   test(
     'large M3U playlists are loaded through the background parser path',
     () async {
-      final playlist = StringBuffer('#EXTM3U\\n');
+      final playlist = StringBuffer('#EXTM3U\n');
       // Force the same size threshold used by XtreamClient._loadM3u without
       // relying on an external provider or a device-only integration test.
       for (var i = 0; i < 2500; i++) {
         playlist
           ..writeln(
-            '#EXTINF:-1 tvg-id="channel-$i" group-title="Group ${i % 20}",'
-            'Channel $i',
+            '#EXTINF:-1 tvg-id="channel-$i" group-title="Group ${i % 20}",Channel $i',
           )
           ..writeln('https://stream.example/live/$i.ts');
       }
