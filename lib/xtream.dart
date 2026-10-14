@@ -356,7 +356,16 @@ class XtreamClient {
     if (res.statusCode != 200)
       throw XtreamException('Playlist returned ${res.statusCode}');
     final playlistUri = Uri.parse(creds.m3uUrl!);
-    final parsed = parseM3uPlaylist(res.body, playlistUri: playlistUri);
+    // Large M3U files can contain tens of thousands of entries. Parsing and
+    // deduplicating them on the Flutter UI isolate can block frames long enough
+    // to trigger Android's input-dispatch ANR watchdog. Keep small playlists
+    // cheap, but move substantial parsing to a worker isolate.
+    final body = res.body;
+    final parsed = body.length >= 180000
+        ? await Isolate.run(
+            () => parseM3uPlaylist(body, playlistUri: playlistUri),
+          )
+        : parseM3uPlaylist(body, playlistUri: playlistUri);
     _m3uCats
       ..clear()
       ..addAll(parsed.categories);
