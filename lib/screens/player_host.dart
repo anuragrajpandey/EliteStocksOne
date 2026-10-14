@@ -325,7 +325,10 @@ class _PlayerHostState extends State<PlayerHost> {
     _sleepTimer?.cancel();
     _restoreBrightness();
     if (!_isDesktop) {
-      SystemChrome.setPreferredOrientations([]);
+      // Android orientation changes rebuild/resize the native MPV output and
+      // have triggered ANRs on affected media_kit/Flutter combinations. We do
+      // not lock or reset Android orientation from the player lifecycle.
+      if (!_isAndroid) SystemChrome.setPreferredOrientations([]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
     _subQueryCtrl.dispose();
@@ -978,7 +981,9 @@ class _PlayerHostState extends State<PlayerHost> {
     if (_isDesktop) {
       if (_fullscreen) windowManager.setFullScreen(false);
     } else {
-      SystemChrome.setPreferredOrientations([]);
+      // Keep Android's current orientation. Requesting a reset here forces
+      // another native video-surface resize just as playback is being closed.
+      if (!_isAndroid) SystemChrome.setPreferredOrientations([]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
     _fullscreen = false;
@@ -1138,10 +1143,17 @@ class _PlayerHostState extends State<PlayerHost> {
       await windowManager.setFullScreen(true);
     } else {
       _fullscreen = true;
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      // Do not force Android into landscape during stream startup. The
+      // resulting CONFIGURATION_CHANGED -> surface resize path is known to
+      // trigger ANRs with media_kit 2.0.1 / Flutter 3.38 on some devices.
+      // Users can still rotate the device naturally while the player remains
+      // fullscreen and immersive.
+      if (!_isAndroid) {
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
     if (mounted && pc.hasMedia && !pc.minimized) setState(() {});
