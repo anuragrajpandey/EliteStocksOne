@@ -100,6 +100,43 @@ https://stream.example/sport.m3u8
     });
   });
 
+  test(
+    'large M3U playlists are loaded through the background parser path',
+    () async {
+      final playlist = StringBuffer('#EXTM3U\\n');
+      // Force the same size threshold used by XtreamClient._loadM3u without
+      // relying on an external provider or a device-only integration test.
+      for (var i = 0; i < 2500; i++) {
+        playlist
+          ..writeln(
+            '#EXTINF:-1 tvg-id="channel-$i" group-title="Group ${i % 20}",'
+            'Channel $i',
+          )
+          ..writeln('https://stream.example/live/$i.ts');
+      }
+      final payload = playlist.toString();
+      expect(payload.length, greaterThanOrEqualTo(180000));
+
+      final client = XtreamClient(
+        const XtreamCredentials(
+          baseUrl: 'https://playlist.example',
+          username: 'playlist',
+          password: '',
+          m3uUrl: 'https://playlist.example/tv/list.m3u',
+        ),
+        httpClient: MockClient(
+          (request) async => http.Response(payload, 200),
+        ),
+      );
+      addTearDown(client.close);
+
+      final channels = await client.liveStreams(null);
+      expect(channels, hasLength(2500));
+      expect(channels.first.name, 'Channel 0');
+      expect(channels.last.name, 'Channel 2499');
+    },
+  );
+
   test('short EPG uses a bounded Xtream request', () async {
     final client = MockClient((request) async {
       expect(request.url.path, '/player_api.php');
