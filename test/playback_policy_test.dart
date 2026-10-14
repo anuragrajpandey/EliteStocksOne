@@ -248,13 +248,16 @@ void main() {
       PlaybackBufferPolicy.resumeFor(true, mode: PlaybackMode.lowLatency),
       const Duration(seconds: 1),
     );
-    expect(PlaybackBufferPolicy.aheadFor(false), const Duration(seconds: 90));
-    expect(PlaybackBufferPolicy.resumeFor(false), const Duration(seconds: 15));
+    expect(PlaybackBufferPolicy.aheadFor(false), const Duration(seconds: 45));
+    expect(PlaybackBufferPolicy.resumeFor(false), const Duration(seconds: 5));
+
+    expect(PlaybackBufferPolicy.maxMemoryBytes, 32 * 1024 * 1024);
+    expect(PlaybackBufferPolicy.maxBackBufferBytes, 5 * 1024 * 1024);
 
     final baseProperties = streamingPropertiesFor(TargetPlatform.android);
     expect(
       baseProperties['demuxer-max-back-bytes'],
-      '${PlaybackBufferPolicy.maxBackBufferBytes}',
+      '${5 * 1024 * 1024}',
     );
   });
 
