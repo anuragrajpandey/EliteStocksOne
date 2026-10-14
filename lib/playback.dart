@@ -684,7 +684,9 @@ class PlaybackController extends ChangeNotifier {
         })
         .catchError((_) {});
 
-    _posSub = activePlayer.stream.position.listen(_onPosition);
+    _posSub = activePlayer.stream.position.listen((position) {
+      if (identical(player, activePlayer)) _onPosition(position);
+    });
     _completedSub = activePlayer.stream.completed.listen((done) {
       if (!identical(player, activePlayer) || !done || isLive) return;
       final item = playbackItemAt(items, index);
@@ -1322,7 +1324,7 @@ class PlaybackController extends ChangeNotifier {
   }
 
   void _onPosition(Duration pos) {
-    if (player == null) return;
+    if (player == null || items.isEmpty) return;
     // Watchdog health signal for ALL stream types: playback advanced → healthy,
     // so refresh the clock and clear any in-progress reconnect (recovery).
     if (pos > _lastPos) {
