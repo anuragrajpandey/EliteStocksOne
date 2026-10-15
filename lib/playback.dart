@@ -674,7 +674,7 @@ class PlaybackController extends ChangeNotifier {
     // VideoController performs asynchronous Android surface/native setup.
     // Configure libmpv only after that setup completes; issuing both sets of
     // native commands concurrently can race the first Player.open().
-    _nativeSetup = activeController.platform
+    _nativeSetup = activeController.platform.future
         .then((_) async {
           if (!identical(player, activePlayer) ||
               !identical(controller, activeController)) {
@@ -823,7 +823,9 @@ class PlaybackController extends ChangeNotifier {
       // asynchronously. Do not open a stream until the controller is ready,
       // and bound the wait so a failed platform channel becomes recoverable
       // playback feedback rather than an endless loading state.
-      await activeController.platform.timeout(const Duration(seconds: 12));
+      await activeController.platform.future.timeout(
+        const Duration(seconds: 12),
+      );
       if (token != _openToken ||
           !identical(player, activePlayer) ||
           !identical(controller, activeController) ||
